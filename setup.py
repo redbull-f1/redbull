@@ -6,7 +6,7 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=[],
-    py_modules=['lidar_preprocessing'],
+    py_modules=['car_tracker'],
     data_files=[
         ('share/' + package_name, ['package.xml']),
     ],
@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'lidar_preprocessing = lidar_preprocessing:main'
+            'car_tracker = car_tracker:main'
         ],
     },
 )

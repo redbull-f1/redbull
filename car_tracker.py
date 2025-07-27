@@ -124,7 +124,7 @@ class LidarProcessor(Node):
         )
         
         # 클러스터링 매개변수 (F1 tenth에 최적화)
-        self.eps = 0.2  # F1 tenth 크기에 맞게 조정
+        self.eps = 0.3  # F1 tenth 크기에 맞게 조정
         self.min_samples = 2  # 최소 포인트 수
         
         # 마커 관리용 변수
@@ -280,7 +280,7 @@ class LidarProcessor(Node):
         line_vec = end_point - start_point
         line_length = np.linalg.norm(line_vec)
         
-        if line_length < 0.01:  # 너무 짧은 선분
+        if line_length < 0.015:  # 너무 짧은 선분
             return True, 1.0
         
         line_unit = line_vec / line_length
@@ -308,8 +308,8 @@ class LidarProcessor(Node):
         return is_linear, linearity_score
 
     def filter_car_clusters(self, clusters):
-        """자동차로 분류되는 클러스터만 필터링 (형태 분석 포함)"""
-        car_clusters = []
+        """자동차로 분류되는 클러스터만 필터링 (형태 분석 포함) - 가장 좋은 후보 1개만 선택"""
+        car_candidates = []
         
         for cluster in clusters:
             points = cluster['points']
@@ -325,7 +325,7 @@ class LidarProcessor(Node):
             min_width, max_width = 0.1, 0.4  # 최소/최대 폭 (m)
             min_height, max_height = 0.1, 0.6  # 최소/최대 길이 (m)
             min_points = 3  # 최소 포인트 수
-            max_points = 40  # 최대 포인트 수
+            max_points = 60  # 최대 포인트 수
             
             # 거리 필터
             distance = np.linalg.norm(cluster['center'])
@@ -344,66 +344,108 @@ class LidarProcessor(Node):
             is_u_shape, u_shape_score = self.analyze_shape_features(points)
             is_linear, linearity_score = self.analyze_linearity(points)
             
-            # 차량 판단 로직
-            # 1. ㄷ 모양이면 차량일 가능성 높음
-            # 2. 직선 모양이면 벽일 가능성 높음
-            is_car = False
+            # 차량 점수 계산 (높을수록 차량일 가능성 높음)
+            car_score = 0.0
             
             if is_u_shape:
-                is_car = True  # ㄷ 모양이면 차량으로 판단
-            elif is_linear:
-                is_car = False  # 직선이면 벽으로 판단
+                car_score += u_shape_score * 2.0  # ㄷ 모양 가중치
+            
+            if not is_linear:
+                car_score += 1.0  # 직선이 아닌 경우 보너스
             else:
-                # 애매한 경우, 크기 기준으로만 판단
-                is_car = True
+                car_score -= 2.0  # 직선인 경우 페널티
+            
+            # 거리 점수 (가까울수록 좋음)
+            distance_score = max(0, 5.0 - distance) / 5.0
+            car_score += distance_score
+            
+            # 크기 점수 (F1 tenth 표준 크기에 가까울수록 좋음)
+            ideal_width = 0.22  # F1 tenth 표준 폭
+            ideal_height = 0.33  # F1 tenth 표준 길이
+            size_score = 2.0 - (abs(width - ideal_width) + abs(height - ideal_height))
+            car_score += max(0, size_score)
             
             self.get_logger().debug(
                 f'클러스터 분석 - 크기: {width:.2f}x{height:.2f}, '
                 f'포인트: {cluster["size"]}, 거리: {distance:.2f}, '
                 f'ㄷ모양: {is_u_shape}({u_shape_score:.3f}), '
                 f'직선: {is_linear}({linearity_score:.3f}), '
-                f'차량판단: {is_car}'
+                f'차량점수: {car_score:.3f}'
             )
             
-            if is_car:
-                car_clusters.append(cluster)
+            # 차량 후보로 추가 (최소 점수 기준)
+            if car_score > 0.5:  # 최소 점수 임계값
+                car_candidates.append({
+                    'cluster': cluster,
+                    'score': car_score
+                })
         
-        self.get_logger().info(f'전체 클러스터: {len(clusters)}, 자동차 클러스터: {len(car_clusters)}')
-        return car_clusters
+        # 점수 순으로 정렬하여 가장 좋은 후보 1개만 선택
+        if car_candidates:
+            car_candidates.sort(key=lambda x: x['score'], reverse=True)
+            best_candidate = car_candidates[0]
+            
+            self.get_logger().info(
+                f'전체 클러스터: {len(clusters)}, 후보: {len(car_candidates)}개, '
+                f'선택된 차량 점수: {best_candidate["score"]:.3f}'
+            )
+            
+            return [best_candidate['cluster']]
+        else:
+            self.get_logger().info(f'전체 클러스터: {len(clusters)}, 자동차 후보 없음')
+            return []
 
     def track_cars(self, detections):
-        """차량 추적 수행"""
+        """차량 추적 수행 (단일 차량)"""
         # 모든 추적기에 대해 예측 수행
         for tracker in self.trackers:
             tracker.predict()
         
-        # 검출과 추적기 연관
+        # 단일 차량 가정하에 추적
+        if len(detections) == 0:
+            return self.trackers
+        
+        # 가장 좋은 검출 하나만 사용
+        detection = detections[0]
+        center = detection['center']
+        
         if len(self.trackers) == 0:
-            # 첫 번째 검출들로 새 추적기 생성
-            for detection in detections:
-                center = detection['center']
-                new_tracker = CarTracker(center[0], center[1], self.next_id)
-                self.trackers.append(new_tracker)
-                self.next_id += 1
+            # 첫 번째 추적기 생성
+            new_tracker = CarTracker(center[0], center[1], self.next_id)
+            self.trackers.append(new_tracker)
+            self.next_id += 1
         else:
-            # 기존 추적기와 검출 연관
-            matched_trackers, unmatched_detections = self.associate_detections_to_trackers(detections)
+            # 기존 추적기와 연관
+            best_tracker = None
+            min_distance = float('inf')
             
-            # 매칭된 추적기 업데이트
-            for tracker_idx, detection_idx in matched_trackers:
-                detection_center = detections[detection_idx]['center']
-                self.trackers[tracker_idx].update(detection_center)
+            for tracker in self.trackers:
+                pred_pos = tracker.get_predicted_position()
+                distance = np.linalg.norm(np.array(center) - np.array(pred_pos))
+                
+                if distance < min_distance and distance < self.max_association_distance:
+                    min_distance = distance
+                    best_tracker = tracker
             
-            # 매칭되지 않은 검출로 새 추적기 생성
-            for detection_idx in unmatched_detections:
-                detection = detections[detection_idx]
-                center = detection['center']
+            if best_tracker:
+                # 기존 추적기 업데이트
+                best_tracker.update(center)
+                # 다른 추적기들은 제거 (단일 차량이므로)
+                self.trackers = [best_tracker]
+            else:
+                # 새 추적기 생성하고 기존 것들 제거
                 new_tracker = CarTracker(center[0], center[1], self.next_id)
-                self.trackers.append(new_tracker)
+                self.trackers = [new_tracker]
                 self.next_id += 1
         
         # 오래된 추적기 제거 (5프레임 이상 업데이트 안됨)
         self.trackers = [t for t in self.trackers if t.time_since_update < 5]
+        
+        # 단일 차량이므로 최대 1개만 유지
+        if len(self.trackers) > 1:
+            # 가장 최근에 업데이트된 추적기만 유지
+            self.trackers.sort(key=lambda x: x.time_since_update)
+            self.trackers = [self.trackers[0]]
         
         return self.trackers
 
