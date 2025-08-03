@@ -9,6 +9,10 @@ import math
 from sklearn.cluster import DBSCAN
 from scipy.spatial.distance import cdist
 
+"""
+칼만 필터를 사용하여 차량의 위치와 속도를 추적하는 코드입니다.
+"""
+
 class KalmanFilter:
     def __init__(self, initial_x, initial_y):
         """칼만 필터 초기화: [x, y, vx, vy]"""

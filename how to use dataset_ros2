@@ -1,0 +1,16 @@
+내가 lidar bag파일을 db3형태로 우분투 22.04 ros2에서 정적 박스 데이터를 확보한게 있어 이걸 csv 파일로 바꿀건데 db3 파일에서 /scan만을 이용해서 csv 파일로 바꾸면 좋겠어 
+
+
+
+# 기본 사용법
+python3 /home/harry/ros2_ws/src/redbull/dataset_ros2.py --bag /home/harry/db3/static_box_5s.db3
+
+# 출력 파일 지정
+python3 /home/harry/ros2_ws/src/redbull/dataset_ros2.py --bag /home/harry/db3/static_box_5s.db3 --output /home/harry/db3/static_box_5s.csv
+
+# 결과 시각화
+python3 /home/harry/ros2_ws/src/redbull/dataset_ros2.py --bag /home/harry/db3/static_box_5s.db3 --visualize
+
+156프레임에 정적 튐 
+
+수동으로 고치기 추가 
