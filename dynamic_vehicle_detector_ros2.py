@@ -14,6 +14,12 @@ import numpy as np
 import torch
 import time
 
+'''
+TinyCenterSpeed를 사용해서 LiDAR 스캔 데이터를 처리하고 동적 차량을 탐지하는 ROS2 노드입니다.
+sub : /scan
+pub : /objects (MarkerArray), /objects_data (Float32MultiArray)
+'''
+
 # Add the src directory to the path for model imports
 src_path = os.path.join(os.path.dirname(__file__), 'src')
 if os.path.exists(src_path):
@@ -86,6 +92,8 @@ class DynamicVehicleDetector(Node):
         
         # Initialize model
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if torch.cuda.is_available():
+            print(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
         self.load_model()
         
         # QoS profile for reliable communication
@@ -364,7 +372,7 @@ class DynamicVehicleDetector(Node):
                 output_data = output_data.unsqueeze(0)
             
             # Find peaks using CenterSpeed method
-            x, y = self.find_k_peaks(output_hm, self.num_opponents, radius=8)
+            x, y = self.find_k_peaks(output_hm, self.num_opponents, radius=8) # 배열 형태의 x,y 여러 객체 동시 탐지 가능
             
             # Create detected objects
             detected_objects = []
