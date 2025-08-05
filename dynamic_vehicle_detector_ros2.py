@@ -202,9 +202,9 @@ class DynamicVehicleDetector(Node):
                 if intensities.max() > intensities.min():
                     intensities = (intensities - intensities.min()) / (intensities.max() - intensities.min())
                 else:
-                    intensities = np.ones_like(lidar_data, dtype=np.float32)
+                    intensities = np.full_like(lidar_data, 0.5, dtype=np.float32)
             else:
-                intensities = np.ones_like(lidar_data, dtype=np.float32)
+                intensities = np.full_like(lidar_data, 0.5, dtype=np.float32)
             
             # Calculate angles
             angles = np.linspace(scan_msg.angle_min, scan_msg.angle_max, len(lidar_data))
@@ -440,7 +440,7 @@ class DynamicVehicleDetector(Node):
             marker.header.frame_id = "laser"
             marker.header.stamp = self.get_clock().now().to_msg()
             marker.ns = "dynamic_vehicles"
-            marker.id = i * 2  # Even IDs for position
+            marker.id = i * 3  # Use 3 IDs per object (position, velocity, label)
             marker.type = Marker.CYLINDER
             marker.action = Marker.ADD
             
@@ -473,7 +473,7 @@ class DynamicVehicleDetector(Node):
             arrow_marker.header.frame_id = "laser"
             arrow_marker.header.stamp = self.get_clock().now().to_msg()
             arrow_marker.ns = "velocity_arrows"
-            arrow_marker.id = i * 2 + 1  # Odd IDs for velocity
+            arrow_marker.id = i * 3 + 1  # Velocity arrow ID
             arrow_marker.type = Marker.ARROW
             arrow_marker.action = Marker.ADD
             
@@ -504,6 +504,41 @@ class DynamicVehicleDetector(Node):
             arrow_marker.color.b = 0.0
             
             marker_array.markers.append(arrow_marker)
+            
+            # Label text marker
+            text_marker = Marker()
+            text_marker.header.frame_id = "laser"
+            text_marker.header.stamp = self.get_clock().now().to_msg()
+            text_marker.ns = "object_labels"
+            text_marker.id = i * 3 + 2  # Label text ID
+            text_marker.type = Marker.TEXT_VIEW_FACING
+            text_marker.action = Marker.ADD
+            
+            # Position above the object
+            text_marker.pose.position.x = obj.x
+            text_marker.pose.position.y = obj.y - 1.3
+            text_marker.pose.position.z = 1.0  # Above the object
+            
+            # Orientation
+            text_marker.pose.orientation.x = 0.0
+            text_marker.pose.orientation.y = 0.0
+            text_marker.pose.orientation.z = 0.0
+            text_marker.pose.orientation.w = 1.0
+            
+            # Scale (text size)
+            text_marker.scale.z = 0.16  # Text height
+            
+            # Color (white text)
+            text_marker.color.a = 1.0
+            text_marker.color.r = 1.0
+            text_marker.color.g = 1.0
+            text_marker.color.b = 1.0
+            
+            # Text content with object information
+            velocity_magnitude = np.sqrt(obj.vx**2 + obj.vy**2)
+            text_marker.text = f"Object_{i+1}\nPos: ({obj.x:.2f},{obj.y:.2f})\nVel: {velocity_magnitude:.2f}m/s\nYaw: {obj.yaw:.2f}rad"
+            
+            marker_array.markers.append(text_marker)
         
         # Publish marker array
         self.objects_marker_pub.publish(marker_array)
