@@ -1,0 +1,20 @@
+/**:
+  ros__parameters:
+    port: "/dev/ttyACM0"
+    brake_max: 200000.0
+    brake_min: -20000.0
+    current_max: 100.0
+    current_min: 0.0
+    duty_cycle_max: 0.0
+    duty_cycle_min: 0.0
+    position_max: 0.0
+    position_min: 0.0
+    servo_max: 0.85
+    servo_min: 0.15
+    speed_max: 23250.0
+    speed_min: -23250.0
+    
+    # # IMU covariance parameters
+    # imu_orientation_covariance: 0.01      # Orientation covariance (diagonal elements)
+    # imu_angular_velocity_covariance: 0.001  # Angular velocity covariance (diagonal elements)
+    # imu_linear_acceleration_covariance: 0.01 # Linear acceleration covariance (diagonal elements)

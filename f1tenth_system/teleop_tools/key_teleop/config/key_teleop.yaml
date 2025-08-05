@@ -1,0 +1,15 @@
+# key_teleop:
+#   ros__parameters:
+#     forward_rate : 0.8
+#     backward_rate: 0.5
+#     rotation_rate: 1.0
+
+# 이거 건드리면 백날 안바뀜 (pygame으로 실행시)
+
+key_teleop:
+  ros__parameters:
+    max_linear: 1.0    # 최대 전진 속도 (m/s)
+    max_angular: 1.5   # 최대 회전 속도 (rad/s)
+    ramp_rate: 2.0     # 가속도 (m/s² 또는 rad/s²)
+    hz: 20             # 주기 (Hz)
+    twist_stamped_enabled: false
