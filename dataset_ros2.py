@@ -5,8 +5,6 @@ from rclpy.node import Node
 import sqlite3
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.font_manager as fm
-from matplotlib.widgets import Button
 import os
 import argparse
 import csv
@@ -15,43 +13,6 @@ from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions
 from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 import math
-
-# 한글 폰트 설정
-plt.rcParams['font.family'] = 'DejaVu Sans'
-plt.rcParams['axes.unicode_minus'] = False
-
-# 한글 폰트 찾기 및 설정
-def setup_korean_font():
-    """한글 폰트를 설정합니다."""
-    try:
-        # 시스템에서 사용 가능한 한글 폰트 찾기
-        font_candidates = [
-            'NanumGothic', 'Noto Sans CJK KR', 'Malgun Gothic', 
-            'AppleGothic', 'Gulim', 'Dotum', 'NanumBarunGothic'
-        ]
-        
-        available_fonts = [f.name for f in fm.fontManager.ttflist]
-        
-        korean_font = None
-        for font in font_candidates:
-            if font in available_fonts:
-                korean_font = font
-                break
-        
-        if korean_font:
-            plt.rcParams['font.family'] = korean_font
-            print(f"한글 폰트 설정 완료: {korean_font}")
-        else:
-            # 한글 폰트가 없으면 영어로 표시
-            plt.rcParams['font.family'] = 'DejaVu Sans'
-            print("한글 폰트를 찾을 수 없어 영어로 표시됩니다.")
-            
-    except Exception as e:
-        print(f"폰트 설정 중 오류: {e}")
-        plt.rcParams['font.family'] = 'DejaVu Sans'
-
-# 폰트 설정 실행
-setup_korean_font()
 
 
 class StaticBoxDetector(Node):
@@ -167,25 +128,69 @@ class StaticBoxDetector(Node):
         x_points = valid_ranges * np.cos(valid_angles)
         y_points = valid_ranges * np.sin(valid_angles)
         
-        # 포인트 클라우드 생성
-        laser_points = np.vstack([x_points, y_points])
+        # ROI 필터링: LiDAR 위치에서 x 방향으로 -0.1m 뒤쪽 데이터 제거
+        roi_mask = x_points >= -0.1  # x >= -0.1m 조건
+        x_points_roi = x_points[roi_mask]
+        y_points_roi = y_points[roi_mask]
+        valid_ranges_roi = valid_ranges[roi_mask]
+        valid_intensities_roi = valid_intensities[roi_mask]
+        valid_angles_roi = valid_angles[roi_mask]
+        
+        # ROI 필터링 후 포인트가 충분한지 확인
+        if len(x_points_roi) < self.min_obs_size:
+            # ROI 내에 충분한 포인트가 없으면 박스 검출 안함
+            csv_entry = {
+                'lidar': valid_ranges.tolist(),
+                'intensities': [0.5] * len(valid_ranges),
+                'x': 0.0,
+                'y': 0.0,
+                'vx': 0.0,
+                'vy': 0.0,
+                'yaw': 0.0
+            }
+            self.scan_data.append(csv_entry)
+            return
+        
+        # 포인트 클라우드 생성 (ROI 적용)
+        laser_points = np.vstack([x_points_roi, y_points_roi])
         
         # 정적 박스 검출
-        detected_box = self.detect_static_box(laser_points, valid_ranges, valid_intensities, valid_angles)
+        detected_box = self.detect_static_box(laser_points, valid_ranges_roi, valid_intensities_roi, valid_angles_roi)
         
         # 속도 계산
         vx, vy = self.calculate_velocity(detected_box, timestamp)
         
+        # 위치 변화 기반 yaw 계산
+        if not hasattr(self, 'prev_x'):
+            self.prev_x = None
+            self.prev_y = None
+
+        if detected_box is not None and self.prev_x is not None and self.prev_y is not None:
+            # 위치 변화 계산
+            dx = detected_box['x'] - self.prev_x
+            dy = detected_box['y'] - self.prev_y
+            
+            if dx == 0.0 and dy == 0.0:
+                yaw = 0.0
+            else:
+                yaw = math.atan2(dy, dx)
+        else:
+            yaw = 0.0
+
+        # 다음 프레임을 위해 현재 위치 저장
         if detected_box is not None:
-            # CSV 형식으로 데이터 저장: [lidar_ranges], [intensities], x, y, vx, vy, yaw
+            self.prev_x = detected_box['x']
+            self.prev_y = detected_box['y']
+
+        if detected_box is not None:
             csv_entry = {
                 'lidar': valid_ranges.tolist(),
-                'intensities': [0.5] * len(valid_ranges),  # 모든 intensities를 0.5로 설정
+                'intensities': [0.5] * len(valid_ranges),
                 'x': detected_box['x'],
                 'y': detected_box['y'],
                 'vx': vx,
                 'vy': vy,
-                'yaw': detected_box['yaw']
+                'yaw': yaw
             }
             self.scan_data.append(csv_entry)
             self.detected_boxes.append(detected_box)
@@ -385,197 +390,488 @@ class StaticBoxDetector(Node):
         
         return True
     
-    def visualize_sample(self, sample_index=0):
+    def manual_verify_data(self, verify_all=False):
         """
-        샘플 데이터를 시각화
+        수동 검증 모드: 저장된 데이터를 시각화하고 사용자가 수정/삭제할 수 있게 함
         
         Args:
-            sample_index: 시각화할 샘플의 인덱스
+            verify_all: True면 모든 데이터 검증, False면 의심스러운 데이터만 검증
         """
-        if sample_index >= len(self.scan_data):
-            self.get_logger().error(f'인덱스 {sample_index}는 유효하지 않습니다. 최대: {len(self.scan_data)-1}')
-            return
+        if not self.scan_data:
+            print('검증할 데이터가 없습니다!')
+            return False
         
-        entry = self.scan_data[sample_index]
-        ranges = np.array(entry['lidar'])
+        if verify_all:
+            # 모든 데이터 검증
+            target_indices = list(range(len(self.scan_data)))
+            print(f'=== 전체 검증 모드 ===')
+            print(f'총 {len(self.scan_data)}개의 모든 데이터를 검증합니다.')
+        else:
+            # 의심스러운 데이터만 검증
+            target_indices = self._find_suspicious_data()
+            print(f'=== 스마트 검증 모드 ===')
+            print(f'총 {len(self.scan_data)}개 중 {len(target_indices)}개의 의심스러운 데이터를 검증합니다.')
+            if len(target_indices) == 0:
+                print('의심스러운 데이터가 없습니다. 검증을 건너뜁니다.')
+                return True
         
-        # 각도 재계산
-        angles = np.linspace(self.angle_min, self.angle_max, len(ranges))
+        print('사용법:')
+        print('  → (오른쪽 화살표): 다음 데이터')
+        print('  ← (왼쪽 화살표): 이전 데이터')
+        print('  e: 수정 모드 (마우스로 위치 클릭)')
+        print('  d: 현재 데이터 삭제')
+        print('  s: 검증 완료 후 저장')
+        print('  q: 검증 종료 (저장 안함)')
+        print('  창을 닫으면 다음 데이터로 이동')
+        print('-' * 50)
         
-        # 직교좌표로 변환
-        x_points = ranges * np.cos(angles)
-        y_points = ranges * np.sin(angles)
+        # matplotlib 설정
+        plt.ion()  # 인터랙티브 모드 활성화
         
-        # 플롯
-        plt.figure(figsize=(12, 10))
-        plt.scatter(x_points, y_points, s=1, alpha=0.6, label='LiDAR Scan')
-        plt.scatter(0, 0, color='blue', s=100, label='LiDAR Sensor', marker='^')
+        # 검증 결과 저장 (원본 인덱스 기준)
+        verification_results = {}  # {original_index: 'keep'/'delete'/modified_entry}
+        current_target_idx = 0
         
-        # 검출된 박스 위치 표시
-        if entry['x'] != 0.0 or entry['y'] != 0.0:
-            plt.scatter(entry['x'], entry['y'], color='red', s=100, label='Detected Box', marker='s')
-            plt.text(entry['x'], entry['y'], f"({entry['x']:.2f}, {entry['y']:.2f})", 
-                    fontsize=10, ha='left', va='bottom')
+        # 키보드 이벤트를 위한 변수
+        self.current_action = None
+        self.clicked_position = None
+        
+        try:
+            while current_target_idx < len(target_indices):
+                original_idx = target_indices[current_target_idx]
+                entry = self.scan_data[original_idx]
+                
+                print(f'\n검증 진행률: {current_target_idx + 1}/{len(target_indices)} (전체 데이터 {original_idx + 1}번)')
+                
+                # 데이터 시각화
+                fig = self._visualize_entry(entry, original_idx)
+                
+                # 키보드 이벤트 핸들러 연결
+                def on_key(event):
+                    if event.key == 'right':
+                        self.current_action = 'next'
+                        plt.close(fig)
+                    elif event.key == 'left':
+                        self.current_action = 'prev'
+                        plt.close(fig)
+                    elif event.key == 'd':
+                        self.current_action = 'delete'
+                        plt.close(fig)
+                    elif event.key == 'e':
+                        self.current_action = 'edit'
+                        plt.close(fig)
+                    elif event.key == 's':
+                        self.current_action = 'save'
+                        plt.close(fig)
+                    elif event.key == 'q':
+                        self.current_action = 'quit'
+                        plt.close(fig)
+                
+                fig.canvas.mpl_connect('key_press_event', on_key)
+                
+                # 그래프 표시 및 대기
+                plt.show()
+                
+                # 이벤트가 발생할 때까지 대기
+                while plt.get_fignums() and self.current_action is None:
+                    plt.pause(0.1)
+                
+                # 액션 처리
+                if self.current_action == 'quit':
+                    print('검증을 종료합니다.')
+                    return False
+                elif self.current_action == 'save':
+                    print('검증을 완료하고 저장합니다.')
+                    break
+                elif self.current_action == 'delete':
+                    print(f'데이터 {original_idx+1} 삭제됨')
+                    verification_results[original_idx] = 'delete'
+                    current_target_idx += 1
+                elif self.current_action == 'edit':
+                    # 데이터 수정 - 마우스 클릭 모드
+                    modified_entry = self._edit_entry_with_mouse(entry, original_idx)
+                    if modified_entry:
+                        verification_results[original_idx] = modified_entry
+                        print('데이터가 수정되었습니다.')
+                    else:
+                        verification_results[original_idx] = 'keep'
+                        print('수정이 취소되었습니다.')
+                    current_target_idx += 1
+                elif self.current_action == 'prev':
+                    # 이전 프레임으로
+                    if current_target_idx > 0:
+                        current_target_idx -= 1
+                        # 이전 결과 제거
+                        prev_idx = target_indices[current_target_idx]
+                        if prev_idx in verification_results:
+                            del verification_results[prev_idx]
+                    continue
+                elif self.current_action == 'next' or self.current_action is None:
+                    # 다음 프레임으로 (기본 동작 - 유지)
+                    verification_results[original_idx] = 'keep'
+                    current_target_idx += 1
+                
+                # 액션 초기화
+                self.current_action = None
+        
+        finally:
+            plt.ioff()  # 인터랙티브 모드 비활성화
+            plt.close('all')  # 모든 그래프 닫기
+        
+        # 검증 결과 적용
+        self._apply_verification_results(verification_results)
+        
+        return True
+    
+    def _find_suspicious_data(self):
+        """
+        의심스러운 데이터 인덱스 찾기 (이전 위치로부터 0.6m 이상 떨어진 경우)
+        
+        Returns:
+            list: 의심스러운 데이터의 인덱스 리스트
+        """
+        suspicious_indices = []
+        distance_threshold = 0.6  # 0.6m
+        
+        for i in range(1, len(self.scan_data)):
+            prev_entry = self.scan_data[i-1]
+            curr_entry = self.scan_data[i]
             
-            # 속도 벡터 표시 (화살표)
-            if abs(entry['vx']) > 0.01 or abs(entry['vy']) > 0.01:
-                plt.arrow(entry['x'], entry['y'], entry['vx']*0.5, entry['vy']*0.5, 
-                         head_width=0.1, head_length=0.1, fc='orange', ec='orange', 
-                         label=f"Velocity: ({entry['vx']:.2f}, {entry['vy']:.2f}) m/s")
+            # 이전 데이터나 현재 데이터가 (0,0)이면 건너뛰기
+            if (prev_entry["x"] == 0.0 and prev_entry["y"] == 0.0) or \
+               (curr_entry["x"] == 0.0 and curr_entry["y"] == 0.0):
+                continue
+            
+            # 거리 계산
+            dx = curr_entry["x"] - prev_entry["x"]
+            dy = curr_entry["y"] - prev_entry["y"]
+            distance = math.sqrt(dx**2 + dy**2)
+            
+            if distance > distance_threshold:
+                suspicious_indices.append(i)
+                print(f'의심스러운 데이터 발견: 인덱스 {i+1}, 이전 위치로부터 {distance:.2f}m 떨어짐')
         
-        plt.xlabel('X (m)')
-        plt.ylabel('Y (m)')
-        plt.title(f'Static Box Detection Result - Sample {sample_index}')
-        plt.legend()
+        return suspicious_indices
+    
+    def _apply_verification_results(self, verification_results):
+        """
+        검증 결과를 원본 데이터에 적용
+        
+        Args:
+            verification_results: {index: 'keep'/'delete'/modified_entry} 형태의 딕셔너리
+        """
+        new_scan_data = []
+        deleted_count = 0
+        modified_count = 0
+        
+        for i, entry in enumerate(self.scan_data):
+            if i in verification_results:
+                result = verification_results[i]
+                if result == 'delete':
+                    deleted_count += 1
+                    continue  # 삭제된 데이터는 추가하지 않음
+                elif result == 'keep':
+                    new_scan_data.append(entry)
+                else:
+                    # 수정된 데이터
+                    new_scan_data.append(result)
+                    modified_count += 1
+            else:
+                # 검증하지 않은 데이터는 그대로 유지
+                new_scan_data.append(entry)
+        
+        self.scan_data = new_scan_data
+        print(f'검증 완료: {len(new_scan_data)}개 데이터 유지, {modified_count}개 수정, {deleted_count}개 삭제')
+    
+    def _visualize_entry(self, entry, index, edit_mode=False):
+        """
+        개별 데이터 엔트리를 시각화
+        """
+        print(f'\n--- 데이터 {index+1} ---')
+        print(f'위치: x={entry["x"]:.3f}, y={entry["y"]:.3f}')
+        print(f'속도: vx={entry["vx"]:.3f}, vy={entry["vy"]:.3f}')
+        print(f'방향: yaw={entry["yaw"]:.3f} rad ({math.degrees(entry["yaw"]):.1f}°)')
+        print(f'LiDAR 포인트 수: {len(entry["lidar"])}개')
+        
+        # matplotlib을 사용한 시각화
+        fig = plt.figure(figsize=(10, 8))
+        
+        # LiDAR 포인트 플롯 - 좌표 변환 (+X 위쪽, +Y 왼쪽)
+        if len(entry["lidar"]) > 0:
+            ranges = np.array(entry["lidar"])
+            # 각도 계산 (기본 LiDAR 파라미터 사용)
+            angles = np.linspace(-2.356194496154785, 2.356194496154785, len(ranges))
+            
+            # 극좌표를 직교좌표로 변환
+            x_points = ranges * np.cos(angles)
+            y_points = ranges * np.sin(angles)
+            
+            # 좌표 변환: (x,y) -> (-y, x) - 시계 반대방향 90도 회전
+            x_rot = -y_points
+            y_rot = x_points
+            
+            # LiDAR 포인트들 플롯
+            plt.scatter(x_rot, y_rot, c='lightblue', s=10, alpha=0.6, label='LiDAR Points')
+        
+        # LiDAR 센서 위치 표시 (원점)
+        plt.scatter(0, 0, c='black', s=100, marker='s', label='LiDAR Sensor', zorder=5)
+        
+        # 좌표축 그리기
+        ax = plt.gca()
+        ax.axhline(y=0, color='k', linestyle='-', alpha=0.3)  # x축
+        ax.axvline(x=0, color='k', linestyle='-', alpha=0.3)  # y축
+        
+        # +X, +Y 방향 표시 (회전된 좌표계)
+        ax.annotate('+X', xy=(0.5, max(5, abs(entry["x"])+2)), fontsize=12, color='red', weight='bold')
+        ax.annotate('+Y', xy=(-max(5, abs(entry["y"])+2), 0.5), fontsize=12, color='red', weight='bold')
+        
+        # 객체 위치 표시 - 좌표 변환
+        if entry["x"] != 0.0 or entry["y"] != 0.0:
+            # 좌표 변환: (x,y) -> (-y, x)
+            obj_x_rot = -entry["y"]
+            obj_y_rot = entry["x"]
+            
+            # 객체 중심점
+            plt.scatter(obj_x_rot, obj_y_rot, c='red', s=100, marker='o', label='Object Center')
+            
+            # 속도 벡터 (vx, vy) - 크기 1/3로 축소하고 좌표 변환
+            if entry["vx"] != 0.0 or entry["vy"] != 0.0:
+                vx_rot = -entry["vy"] / 3
+                vy_rot = entry["vx"] / 3
+                plt.arrow(obj_x_rot, obj_y_rot, vx_rot, vy_rot, 
+                         head_width=0.07, head_length=0.1, fc='blue', ec='blue', 
+                         label='Velocity Vector', width=0.02)
+            
+            # yaw 방향 벡터 - 크기 1/3로 축소하고 좌표 변환
+            if entry["yaw"] != 0.0:
+                yaw_length = 0.67  # 2.0 / 3 = 0.67
+                yaw_x = yaw_length * math.cos(entry["yaw"])
+                yaw_y = yaw_length * math.sin(entry["yaw"])
+                # 좌표 변환
+                yaw_x_rot = -yaw_y
+                yaw_y_rot = yaw_x
+                plt.arrow(obj_x_rot, obj_y_rot, yaw_x_rot, yaw_y_rot, 
+                         head_width=0.05, head_length=0.07, fc='green', ec='green', 
+                         label='Yaw Direction', width=0.015)
+            
+            # 텍스트 정보 표시 - 위치도 변환
+            info_text = f'x: {entry["x"]:.2f}\ny: {entry["y"]:.2f}\nvx: {entry["vx"]:.2f}\nvy: {entry["vy"]:.2f}\nyaw: {entry["yaw"]:.2f} rad\n({math.degrees(entry["yaw"]):.1f}°)'
+            plt.text(obj_x_rot + 1, obj_y_rot + 1, info_text, 
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.8),
+                    fontsize=10)
+        
+        # 그리드와 축 설정
         plt.grid(True, alpha=0.3)
         plt.axis('equal')
         
-        # 축 범위 설정 (검출된 박스 중심으로)
-        if entry['x'] != 0.0 or entry['y'] != 0.0:
-            margin = 3.0
-            plt.xlim(entry['x'] - margin, entry['x'] + margin)
-            plt.ylim(entry['y'] - margin, entry['y'] + margin)
+        # 축 범위 설정 (회전된 좌표계 기준)
+        if entry["x"] != 0.0 or entry["y"] != 0.0:
+            margin = 5
+            # 원래 x,y를 회전된 좌표계로 변환
+            obj_x_rot = -entry["y"]
+            obj_y_rot = entry["x"]
+            x_min = min(-margin, obj_x_rot - margin)
+            x_max = max(margin, obj_x_rot + margin)
+            y_min = min(-margin, obj_y_rot - margin)
+            y_max = max(margin, obj_y_rot + margin)
         else:
-            plt.xlim(-5, 5)
-            plt.ylim(-5, 5)
+            x_min, x_max = -10, 10
+            y_min, y_max = -10, 10
         
+        plt.xlim(x_min, x_max)
+        plt.ylim(y_min, y_max)
+        
+        # 제목 설정 (수정 모드에 따라 다르게)
+        if edit_mode:
+            title = f'EDIT MODE - Data Entry {index+1}\nClick to Set New Position | Enter: Confirm | ESC/q: Cancel'
+        else:
+            title = f'Data Entry {index+1} - Static Box Detection\nLeft Click: Move Object | ← → : Navigate | d: Delete | e: Edit | s: Save | q: Quit'
+        
+        # 레이블과 제목
+        plt.xlabel('Y (m)', fontsize=12)  # 회전된 좌표계에서 가로축은 Y
+        plt.ylabel('X (m)', fontsize=12)  # 회전된 좌표계에서 세로축은 X
+        plt.title(title, fontsize=12)
+        plt.legend()
+        
+        # 그래프 표시
         plt.tight_layout()
+        
+        return fig
+    
+    def _edit_entry_with_mouse(self, entry, index):
+        """
+        마우스 클릭으로 데이터 엔트리 수정
+        """
+        print('\n=== 수정 모드 ===')
+        print('원하는 위치를 마우스로 클릭하세요.')
+        print('또는 다음 키를 사용하세요:')
+        print('  Enter: 현재 값 유지하고 완료')
+        print('  ESC 또는 q: 수정 취소')
+        print('-' * 30)
+        
+        # 수정용 변수 초기화
+        self.edit_clicked_position = None
+        self.edit_action = None
+        
+        # 시각화 창 생성
+        fig = self._visualize_entry(entry, index, edit_mode=True)
+        
+        # 수정 모드용 이벤트 핸들러
+        def on_edit_click(event):
+            if event.inaxes is not None and event.button == 1:  # 왼쪽 마우스 버튼
+                # 회전된 좌표계에서 원래 좌표계로 변환
+                clicked_x_rot = event.xdata
+                clicked_y_rot = event.ydata
+                
+                # 좌표 역변환: (x_rot, y_rot) -> (y, -x_rot)
+                actual_x = clicked_y_rot
+                actual_y = -clicked_x_rot
+                
+                self.edit_clicked_position = (actual_x, actual_y)
+                self.edit_action = 'position_updated'
+                print(f'새 위치 선택: x={actual_x:.3f}, y={actual_y:.3f}')
+                
+                # 새 위치를 시각적으로 표시
+                ax = plt.gca()
+                # 기존 "New Position" 마커 제거
+                for artist in ax.get_children():
+                    if hasattr(artist, 'get_label') and artist.get_label() == 'New Position':
+                        artist.remove()
+                
+                # 새 위치 표시 (회전된 좌표계로)
+                new_x_rot = -actual_y
+                new_y_rot = actual_x
+                ax.scatter(new_x_rot, new_y_rot, c='magenta', s=150, marker='x', 
+                          linewidths=3, label='New Position', zorder=10)
+                ax.text(new_x_rot + 0.5, new_y_rot + 0.5, 'NEW', 
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor="magenta", alpha=0.8),
+                       fontsize=12, color='white', weight='bold')
+                ax.legend()
+                plt.draw()
+        
+        def on_edit_key(event):
+            if event.key == 'enter':
+                self.edit_action = 'confirm'
+                plt.close(fig)
+            elif event.key == 'escape' or event.key == 'q':
+                self.edit_action = 'cancel'
+                plt.close(fig)
+        
+        # 이벤트 연결
+        fig.canvas.mpl_connect('button_press_event', on_edit_click)
+        fig.canvas.mpl_connect('key_press_event', on_edit_key)
+        
+        # 창 표시 및 대기
         plt.show()
         
-    def visualize_sample_interactive(self, sample_index=0):
-        """
-        인터랙티브용 샘플 데이터 시각화 (non-blocking)
+        # 이벤트 대기
+        while plt.get_fignums() and self.edit_action is None:
+            plt.pause(0.1)
         
-        Args:
-            sample_index: 시각화할 샘플의 인덱스
-        """
-        if sample_index >= len(self.scan_data):
-            self.get_logger().error(f'인덱스 {sample_index}는 유효하지 않습니다. 최대: {len(self.scan_data)-1}')
-            return
-        
-        entry = self.scan_data[sample_index]
-        ranges = np.array(entry['lidar'])
-        
-        # 각도 재계산
-        angles = np.linspace(self.angle_min, self.angle_max, len(ranges))
-        
-        # 직교좌표로 변환
-        x_points = ranges * np.cos(angles)
-        y_points = ranges * np.sin(angles)
-        
-        # 기존 모든 창 닫기
-        plt.close('all')
-        
-        # 새로운 플롯 생성
-        fig, ax = plt.subplots(figsize=(10, 8))
-        ax.scatter(x_points, y_points, s=1, alpha=0.6, label='LiDAR Scan')
-        ax.scatter(0, 0, color='blue', s=100, label='LiDAR Sensor', marker='^')
-        
-        # 검출된 박스 위치 표시
-        if entry['x'] != 0.0 or entry['y'] != 0.0:
-            ax.scatter(entry['x'], entry['y'], color='red', s=100, label='Detected Box', marker='s')
-            ax.text(entry['x'], entry['y'], f"({entry['x']:.2f}, {entry['y']:.2f})", 
-                    fontsize=10, ha='left', va='bottom')
-            
-            # 속도 벡터 표시 (화살표)
-            if abs(entry['vx']) > 0.01 or abs(entry['vy']) > 0.01:
-                ax.arrow(entry['x'], entry['y'], entry['vx']*0.5, entry['vy']*0.5, 
-                         head_width=0.1, head_length=0.1, fc='orange', ec='orange', 
-                         label=f"Velocity: ({entry['vx']:.2f}, {entry['vy']:.2f}) m/s")
-        
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
-        ax.set_title(f'Frame {sample_index}/{len(self.scan_data)-1} - Press any key in terminal to continue')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        ax.set_aspect('equal')
-        
-        # 축 범위 설정 (검출된 박스 중심으로)
-        if entry['x'] != 0.0 or entry['y'] != 0.0:
-            margin = 3.0
-            ax.set_xlim(entry['x'] - margin, entry['x'] + margin)
-            ax.set_ylim(entry['y'] - margin, entry['y'] + margin)
+        # 결과 처리
+        if self.edit_action == 'confirm' and self.edit_clicked_position:
+            # 새 위치로 수정
+            modified_entry = entry.copy()
+            modified_entry["x"] = self.edit_clicked_position[0]
+            modified_entry["y"] = self.edit_clicked_position[1]
+            print(f'위치 수정 완료: x={self.edit_clicked_position[0]:.3f}, y={self.edit_clicked_position[1]:.3f}')
+            return modified_entry
+        elif self.edit_action == 'confirm':
+            # 위치 변경 없이 유지
+            print('위치 변경 없이 유지됩니다.')
+            return entry
         else:
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-5, 5)
-        
-        plt.tight_layout()
-        # non-blocking으로 표시
-        plt.show(block=False)
-        plt.pause(0.1)  # 화면 업데이트를 위한 짧은 pause
+            # 수정 취소
+            print('수정이 취소되었습니다.')
+            return None
     
-    def visualize_interactive(self, start_index=0):
+    def _edit_entry(self, entry):
         """
-        인터랙티브 시각화 - Enter로 다음 프레임, Ctrl+C로 종료
-        
-        Args:
-            start_index: 시작할 샘플 인덱스
+        데이터 엔트리 수정
         """
-        print("\n=== 인터랙티브 시각화 모드 ===")
-        print("사용법:")
-        print("- Enter 키: 다음 프레임으로 이동")
-        print("- 숫자 입력 + Enter: 특정 프레임으로 이동")
-        print("- 'q' + Enter: 종료")
-        print("- Ctrl + C: 강제 종료")
-        print(f"총 {len(self.scan_data)}개의 프레임이 있습니다.")
-        print("="*40)
-        print("\n⚠️  주의: matplotlib 창은 참고용입니다. 터미널에서 키를 입력하세요!")
-        print("="*40)
-        
-        current_index = start_index
+        print('\n현재 값:')
+        print(f'x: {entry["x"]:.3f}')
+        print(f'y: {entry["y"]:.3f}')
+        print(f'vx: {entry["vx"]:.3f}')
+        print(f'vy: {entry["vy"]:.3f}')
+        print(f'yaw: {entry["yaw"]:.3f}')
         
         try:
-            while current_index < len(self.scan_data):
-                print(f"\n현재 프레임: {current_index}/{len(self.scan_data)-1}")
-                
-                # 현재 프레임 시각화 (non-blocking)
-                self.visualize_sample_interactive(current_index)
-                
-                # 사용자 입력 대기
-                try:
-                    user_input = input(">>> 다음 프레임으로 이동하려면 Enter를 누르세요 (숫자/q): ").strip()
-                    
-                    if user_input.lower() == 'q':
-                        print("시각화를 종료합니다.")
-                        break
-                    elif user_input == '':
-                        # Enter만 눌렀을 경우 다음 프레임으로
-                        current_index += 1
-                    elif user_input.isdigit():
-                        # 숫자를 입력한 경우 해당 프레임으로 이동
-                        target_index = int(user_input)
-                        if 0 <= target_index < len(self.scan_data):
-                            current_index = target_index
-                        else:
-                            print(f"❌ 잘못된 프레임 번호입니다. 0-{len(self.scan_data)-1} 사이의 숫자를 입력하세요.")
-                            continue
-                    else:
-                        print("❌ 잘못된 입력입니다. Enter, 숫자, 또는 'q'를 입력하세요.")
-                        continue
-                        
-                except EOFError:
-                    # Ctrl+D가 입력된 경우
-                    print("\n시각화를 종료합니다.")
-                    break
-                
-            # 마지막에 도달한 경우
-            if current_index >= len(self.scan_data):
-                print(f"\n🎉 모든 프레임을 확인했습니다! (총 {len(self.scan_data)}개)")
-                
-        except KeyboardInterrupt:
-            print("\n\n⚠️  Ctrl+C가 감지되었습니다. 시각화를 종료합니다.")
-        finally:
-            plt.close('all')
+            new_x = input(f'새 x 값 (현재: {entry["x"]:.3f}, Enter로 유지): ')
+            new_y = input(f'새 y 값 (현재: {entry["y"]:.3f}, Enter로 유지): ')
+            new_vx = input(f'새 vx 값 (현재: {entry["vx"]:.3f}, Enter로 유지): ')
+            new_vy = input(f'새 vy 값 (현재: {entry["vy"]:.3f}, Enter로 유지): ')
+            new_yaw = input(f'새 yaw 값 (현재: {entry["yaw"]:.3f}, Enter로 유지): ')
+            
+            modified_entry = entry.copy()
+            
+            if new_x.strip():
+                modified_entry["x"] = float(new_x)
+            if new_y.strip():
+                modified_entry["y"] = float(new_y)
+            if new_vx.strip():
+                modified_entry["vx"] = float(new_vx)
+            if new_vy.strip():
+                modified_entry["vy"] = float(new_vy)
+            if new_yaw.strip():
+                modified_entry["yaw"] = float(new_yaw)
+            
+            return modified_entry
+            
+        except ValueError:
+            print('잘못된 값입니다. 수정이 취소됩니다.')
+            return None
+    
+    def filter_quality_data(self):
+        """
+        데이터 품질 관리: 불량 데이터 자동 폐기
+        """
+        if not self.scan_data:
+            return
         
-        print("시각화 완료!")
-
+        original_count = len(self.scan_data)
+        filtered_data = []
+        
+        for entry in self.scan_data:
+            # 품질 검사 기준
+            is_valid = True
+            
+            # 1. 위치가 합리적인 범위 내에 있는지 확인
+            if abs(entry["x"]) > 5 or abs(entry["y"]) > 5:  # 5m 이상은 비현실적
+                is_valid = False
+            
+            # 2. 속도가 합리적인 범위 내에 있는지 확인
+            velocity_magnitude = math.sqrt(entry["vx"]**2 + entry["vy"]**2)
+            if velocity_magnitude > 5.56:  # 시속20 -> 5.56m/s
+                is_valid = False
+            
+            # 3. LiDAR 데이터가 충분한지 확인
+            if len(entry["lidar"]) < 5:  # 너무 적은 포인트
+                is_valid = False
+            
+            # 4. yaw 값이 유효한지 확인
+            if not (-math.pi <= entry["yaw"] <= math.pi):
+                is_valid = False
+            
+            if is_valid:
+                filtered_data.append(entry)
+        
+        self.scan_data = filtered_data
+        removed_count = original_count - len(filtered_data)
+        
+        print(f'데이터 품질 필터링 완료:')
+        print(f'  원본: {original_count}개')
+        print(f'  유지: {len(filtered_data)}개')
+        print(f'  제거: {removed_count}개')
+        
+        return True
 
 def main():
     parser = argparse.ArgumentParser(description='ROS2 bag 파일에서 정적 박스 데이터를 추출하여 CSV로 저장')
     parser.add_argument('--bag', type=str, required=True, help='ROS2 bag 파일 경로 (db3)')
     parser.add_argument('--output', type=str, help='출력 CSV 파일 경로')
-    parser.add_argument('--visualize', nargs='?', const='interactive', default=None,
-                       help='시각화 옵션: 숫자(특정 프레임), 값 없음(인터랙티브 모드)')
+    parser.add_argument('--manual-verify', action='store_true', help='스마트 검증 모드 (의심스러운 데이터만 확인)')
+    parser.add_argument('--manual-verify-all', action='store_true', help='전체 검증 모드 (모든 데이터 확인)')
     
     args = parser.parse_args()
     
@@ -598,23 +894,26 @@ def main():
         
         print(f'ROS2 bag 파일 읽기 시작: {args.bag}')
         if detector.read_bag():
+            print('데이터 처리 완료')
+            
+            # 데이터 품질 필터링
+            detector.filter_quality_data()
+            
+            # 수동 검증 모드
+            if args.manual_verify_all:
+                print('\n=== 전체 수동 검증 모드 ===')
+                if not detector.manual_verify_data(verify_all=True):
+                    print('검증이 취소되었습니다.')
+                    return
+            elif args.manual_verify:
+                print('\n=== 스마트 수동 검증 모드 ===')
+                if not detector.manual_verify_data(verify_all=False):
+                    print('검증이 취소되었습니다.')
+                    return
+            
             print('CSV 파일 저장 중...')
             if detector.save_to_csv():
                 print(f'성공적으로 완료되었습니다: {args.output}')
-                
-                # 시각화 옵션 처리
-                if args.visualize is not None:
-                    if args.visualize == 'interactive':
-                        # --visualize만 사용된 경우 (인터랙티브 모드)
-                        detector.visualize_interactive(start_index=0)
-                    else:
-                        try:
-                            # 숫자가 입력된 경우
-                            frame_index = int(args.visualize)
-                            detector.visualize_sample(frame_index)
-                        except ValueError:
-                            print(f"잘못된 프레임 번호입니다: {args.visualize}")
-                            print("숫자를 입력하거나 --visualize만 사용하세요.")
             else:
                 print('CSV 파일 저장에 실패했습니다.')
         else:
@@ -629,3 +928,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
