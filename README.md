@@ -1,6 +1,6 @@
 # redbull
-- 다훈 : perception + planning
-- 서경 : control + planning
-- 민원 : planning
-- 종명 : object detection
-- 다혜 : perception slam
+- 다훈 : local planning
+- 서경 : control
+- 민원 : global planning
+- 종명 : object detection, tracking
+- 다혜 : slam, localization
