@@ -1,0 +1,84 @@
+2025-08-08 13:00:54,405 INFO    MainThread:106891 [wandb_setup.py:_flush():80] Current SDK version is 0.21.0
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_setup.py:_flush():80] Configure stats pid to 106891
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_setup.py:_flush():80] Loading settings from /home/harry/.config/wandb/settings
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_setup.py:_flush():80] Loading settings from /home/harry/ros2_ws/src/redbull/train/wandb/settings
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_init.py:setup_run_log_directory():703] Logging user logs to /home/harry/ros2_ws/src/redbull/train/wandb/run-20250808_130054-lgk9q58w/logs/debug.log
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_init.py:setup_run_log_directory():704] Logging internal logs to /home/harry/ros2_ws/src/redbull/train/wandb/run-20250808_130054-lgk9q58w/logs/debug-internal.log
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_init.py:monkeypatch_ipython():622] configuring jupyter hooks <wandb.sdk.wandb_init._WandbInit object at 0x729b5f5ebee0>
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_init.py:init():830] calling init triggers
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_init.py:init():835] wandb.init called with sweep_config: {}
+config: {'epochs': 15, 'learning_rate': 0.0005, 'architecture': 'CenterSpeed: Hourglass Deep with Sigmoid, & Dropout, BatchNorm and Head with 2 frames, lower resolution: 64x64, pixelsize 0.1', 'dataset': 'Transfer learning test', 'optimizer': 'Adam', 'Loss-Function': 'CenterSpeedLossFreev2 with updated logic for free tracks on the dataset level', '_wandb': {'code_path': 'code/train/train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:00:54,406 INFO    MainThread:106891 [wandb_init.py:init():871] starting backend
+2025-08-08 13:00:54,618 INFO    MainThread:106891 [wandb_init.py:init():874] sending inform_init request
+2025-08-08 13:00:54,620 INFO    MainThread:106891 [wandb_init.py:init():882] backend started and connected
+2025-08-08 13:00:54,624 INFO    MainThread:106891 [wandb_run.py:_label_probe_notebook():1304] probe notebook
+2025-08-08 13:00:54,625 INFO    MainThread:106891 [wandb_init.py:init():953] updated telemetry
+2025-08-08 13:00:54,630 INFO    MainThread:106891 [wandb_init.py:init():977] communicating run to backend with 90.0 second timeout
+2025-08-08 13:00:55,404 INFO    MainThread:106891 [wandb_init.py:init():1029] starting run threads in backend
+2025-08-08 13:00:55,525 INFO    MainThread:106891 [wandb_run.py:_console_start():2458] atexit reg
+2025-08-08 13:00:55,525 INFO    MainThread:106891 [wandb_run.py:_redirect():2306] redirect: wrap_raw
+2025-08-08 13:00:55,525 INFO    MainThread:106891 [wandb_run.py:_redirect():2375] Wrapping output streams.
+2025-08-08 13:00:55,525 INFO    MainThread:106891 [wandb_run.py:_redirect():2398] Redirects installed.
+2025-08-08 13:00:55,527 INFO    MainThread:106891 [wandb_init.py:init():1075] run started, returning control to user process
+2025-08-08 13:00:55,536 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:00:59,673 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:01:00,007 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:01:00,007 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:01:00,007 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:01:00,010 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:01:01,896 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:01:02,179 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:01:02,179 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:01:02,179 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:01:02,291 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:01:23,858 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:01:24,208 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:01:24,208 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:01:24,209 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:01:24,211 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:01:28,466 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:01:28,824 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:01:28,824 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:01:28,824 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:01:28,826 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:01:40,331 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:01:40,687 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:01:40,687 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:01:40,687 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:02:36,162 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:02:42,675 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:02:42,976 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:02:42,977 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:02:42,977 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:02:42,979 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:02:44,520 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:02:44,851 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:02:44,852 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:02:44,852 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:02:45,826 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:03:14,173 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:03:14,495 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:03:14,495 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:03:14,495 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:03:15,357 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:03:39,277 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:03:39,595 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:03:39,595 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:03:39,596 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:03:40,373 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:04:12,072 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:04:12,478 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:04:12,478 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:04:12,478 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:04:13,415 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:04:38,114 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:04:38,458 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:04:38,459 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:04:38,459 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:04:38,460 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend
+2025-08-08 13:04:40,527 INFO    MainThread:106891 [jupyter.py:_save_ipynb():416] [no run ID] looking for notebook: /home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb
+2025-08-08 13:04:40,819 INFO    MainThread:106891 [wandb_run.py:_config_callback():1363] config_cb None None {'_wandb': {'code_path': 'source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb'}}
+2025-08-08 13:04:40,819 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():578] [no run ID] saved code: <Artifact source-CenterSpeedLowRes-_home_harry_ros2_ws_src_redbull_train_train_CenterSpeed_dense.ipynb>
+2025-08-08 13:04:40,819 INFO    MainThread:106891 [wandb_init.py:_pre_run_cell_hook():581] [no run ID] pausing backend
+2025-08-08 13:04:41,360 INFO    MainThread:106891 [wandb_init.py:_post_run_cell_hook():592] [no run ID] resuming backend

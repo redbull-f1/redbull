@@ -1,0 +1,40 @@
+{
+  "os":  "Linux-6.8.0-65-generic-x86_64-with-glibc2.35",
+  "python":  "CPython 3.10.12",
+  "startedAt":  "2025-08-08T04:00:54.401780Z",
+  "program":  "/home/harry/ros2_ws/src/redbull/train/train_CenterSpeed_dense.ipynb",
+  "codePath":  "train/train_CenterSpeed_dense.ipynb",
+  "codePathLocal":  "train_CenterSpeed_dense.ipynb",
+  "git":  {
+    "remote":  "https://github.com/redbull-f1/redbull.git",
+    "commit":  "761da9b9ebb687ca635d01de93061558a4d3662e"
+  },
+  "email":  "whdaud0905@naver.com",
+  "root":  "/home/harry/ros2_ws/src/redbull/train",
+  "host":  "harry-ASUS-TUF-Gaming-A14-FA401UV-FA401UV",
+  "executable":  "/usr/bin/python3",
+  "cpu_count":  8,
+  "cpu_count_logical":  16,
+  "gpu":  "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "491091836928",
+      "used":  "60924006400"
+    }
+  },
+  "memory":  {
+    "total":  "32861782016"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 4060 Laptop GPU",
+      "memoryTotal":  "8585740288",
+      "cudaCores":  3072,
+      "architecture":  "Ada",
+      "uuid":  "GPU-b4f9f245-9d67-ff26-7f88-9c65365a1212"
+    }
+  ],
+  "cudaVersion":  "12.8",
+  "writerId":  "14sduc45kvdcradyvf0oh54ylwhjrprd"
+}

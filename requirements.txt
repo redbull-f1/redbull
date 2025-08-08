@@ -1,0 +1,28 @@
+# Core dependencies
+numpy>=1.21.0
+torch>=1.12.0
+torchvision>=0.13.0
+
+# Data processing
+scipy>=1.7.0
+matplotlib>=3.5.0
+
+# Machine Learning
+scikit-learn>=1.0.0
+
+# Optional (for training)
+wandb>=0.12.0
+
+# Additional dependencies for data processing
+pandas>=1.3.0
+
+# ROS2 dependencies (installed via apt)
+# rclpy (comes with ROS2)
+# sensor_msgs (comes with ROS2)
+# geometry_msgs (comes with ROS2)
+# visualization_msgs (comes with ROS2)
+# std_msgs (comes with ROS2)
+# nav_msgs (comes with ROS2)
+# tf2_ros (comes with ROS2)
+# tf2_py (comes with ROS2)
+# rosbag2_py (comes with ROS2)
