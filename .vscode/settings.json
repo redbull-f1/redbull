@@ -1,0 +1,13 @@
+{
+    "python.analysis.extraPaths": [
+        "./src",
+        "./src/models",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/home/harry/ros2_ws/install/redbull/lib/python3.10/site-packages"
+    ],
+    "python.defaultInterpreter": "/usr/bin/python3",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeCheckingMode": "basic"
+}
