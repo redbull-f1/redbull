@@ -1,0 +1,16 @@
+[submodule "submodules"]
+	path = submodules
+	url = https://github.com/cra-ros-pkg/robot_localization.git
+	branch = humble-devel
+[submodule "cartographer_ros"]
+	path = cartographer_ros
+	url = https://github.com/ros2/cartographer_ros.git
+	branch = ros2
+[submodule "cartographer-project/cartographer_ros"]
+	path = cartographer-project/cartographer_ros
+	url = https://github.com/cartographer-project/cartographer_ros.git
+	branch = master
+[submodule "robot_localization"]
+	path = robot_localization
+	url = https://github.com/cra-ros-pkg/robot_localization.git
+	branch = humble-devel
