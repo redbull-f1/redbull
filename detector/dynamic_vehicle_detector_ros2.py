@@ -22,26 +22,28 @@ pub : /objects (MarkerArray), /objects_data (Float32MultiArray)
 '''
 
 # Add the src directory to the path for model imports
-src_path = os.path.join(os.path.dirname(__file__), 'src')
-if os.path.exists(src_path):
-    sys.path.insert(0, src_path)
-else:
-    # Try to find the package in the install directory
-    try:
-        import ament_index_python
-        package_share_directory = ament_index_python.get_package_share_directory('redbull')
-        sys.path.insert(0, package_share_directory)
-    except:
-        pass
+current_dir = os.path.dirname(os.path.abspath(__file__))
+redbull_root = os.path.dirname(current_dir)  # Go up to redbull directory
+
+# Add paths for model imports
+model_paths = [
+    os.path.join(redbull_root, 'train'),  # For models directory
+    os.path.join(redbull_root, 'train', 'models'),  # Direct models access
+    redbull_root  # Root directory
+]
+
+for path in model_paths:
+    if os.path.exists(path) and path not in sys.path:
+        sys.path.insert(0, path)
 
 try:
     from models.CenterSpeed import CenterSpeedDense, CenterSpeedModular
 except ImportError as e:
     print(f"Warning: Could not import CenterSpeed models: {e}")
-    # Try alternative import paths
+    # Try alternative import from train directory
     try:
-        sys.path.append(os.path.dirname(__file__))
-        from src.models.CenterSpeed import CenterSpeedDense, CenterSpeedModular
+        sys.path.append(os.path.join(redbull_root, 'train'))
+        from models.CenterSpeed import CenterSpeedDense, CenterSpeedModular
     except ImportError as e2:
         print(f"Warning: Alternative import also failed: {e2}")
         CenterSpeedDense = None
@@ -149,20 +151,18 @@ class DynamicVehicleDetector(Node):
                 self.net = None
                 return
             
+            # Get redbull package root directory
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            redbull_root = os.path.dirname(current_dir)
+            
             # Try multiple paths for the model file
             model_paths = [
-                os.path.join(os.path.dirname(__file__), self.model_path),  # Original path
-                os.path.join(os.path.dirname(__file__), 'src', 'trained_models', 'TinyCenterSpeed.pt'),  # src relative
-                self.model_path,  # Direct path
+                os.path.join(redbull_root, 'train', 'trained_models', 'TinyCenterSpeed.pt'),
+                os.path.join(redbull_root, 'train', 'trained_models', 'best_model_epoch_0.pt'),
+                os.path.join(redbull_root, 'train', 'trained_models', 'epoch_0.pt'),
+                os.path.join(redbull_root, 'trained_models', 'TinyCenterSpeed.pt'),
+                self.model_path,  # User-specified path
             ]
-            
-            # Try to find model in package share directory
-            try:
-                import ament_index_python
-                package_share_directory = ament_index_python.get_package_share_directory('redbull')
-                model_paths.append(os.path.join(package_share_directory, 'trained_models', 'TinyCenterSpeed.pt'))
-            except:
-                pass
             
             model_full_path = None
             for path in model_paths:
@@ -172,6 +172,7 @@ class DynamicVehicleDetector(Node):
             
             if model_full_path is None:
                 self.get_logger().error(f"Model file not found in any of these paths: {model_paths}")
+                self.get_logger().info("Please ensure you have trained a model or provide a valid model path")
                 self.net = None
                 return
                 

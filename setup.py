@@ -6,34 +6,42 @@ package_name = 'redbull'
 
 setup(
     name=package_name,
-    version='0.0.0',
-    packages=find_packages(where='src'),
-    package_dir={'': 'src'},
+    version='1.0.0',
+    packages=find_packages(),
+    py_modules=['car_tracker'],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'models'), glob('src/models/*.py')),
-        (os.path.join('share', package_name, 'trained_models'), glob('src/trained_models/*')),
-        (os.path.join('lib', package_name), ['car_tracker.py', 'dynamic_vehicle_detector_ros2.py']),
+        # Include launch files if they exist
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py') if os.path.exists('launch') else []),
+        # Include config files if they exist
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml') if os.path.exists('config') else []),
+        # Include model files if they exist
+        (os.path.join('share', package_name, 'trained_models'), glob('train/trained_models/*.pt') if os.path.exists('train/trained_models') else []),
     ],
     install_requires=[
         'setuptools',
-        'numpy',
-        'scikit-learn',
-        'torch',
-        'torchvision'
+        'numpy>=1.21.0',
+        'torch>=1.12.0',
+        'torchvision>=0.13.0',
+        'scipy>=1.7.0',
+        'matplotlib>=3.5.0',
+        'pandas>=1.3.0',
+        'scikit-learn>=1.0.0',
     ],
     zip_safe=True,
     maintainer='harry',
     maintainer_email='your_email@example.com',
-    description='LiDAR preprocessing package',
+    description='Dynamic vehicle detection using TinyCenterSpeed and LiDAR preprocessing package',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'car_tracker = car_tracker:main',
-            'dynamic_vehicle_detector = dynamic_vehicle_detector_ros2:main'
+            'dynamic_vehicle_detector = detector.dynamic_vehicle_detector_ros2:main',
+            'parse_bag_csv = parse_bag_csv:main',
+            'parse_bag_ros2 = parse_bag_ros2:main',
         ],
     },
 )
