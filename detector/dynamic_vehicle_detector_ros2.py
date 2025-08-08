@@ -58,13 +58,13 @@ from std_msgs.msg import Header, Float32MultiArray
 
 class DetectedObject:
     """Detected dynamic vehicle object"""
-    def __init__(self, x, y, vx, vy, yaw):
+    def __init__(self, x, y, vx, vy, yaw, size=0.5):
         self.x = float(x)
         self.y = float(y) 
         self.vx = float(vx)
         self.vy = float(vy)
         self.yaw = float(yaw)
-        self.size = 0.4  # Default size for visualization
+        self.size = float(size)  # Object size for visualization and collision detection
 
 class DynamicVehicleDetector(Node):
     """ROS2 node for detecting dynamic vehicles from LiDAR scan data using TinyCenterSpeed"""
@@ -121,7 +121,7 @@ class DynamicVehicleDetector(Node):
             qos_profile
         )
         
-        # Publish object data as Float32MultiArray [x, y, vx, vy, yaw] for each object
+        # Publish object data as Float32MultiArray [x, y, vx, vy, yaw, size] for each object
         self.objects_data_pub = self.create_publisher(
             Float32MultiArray,
             '/objects_data',
@@ -401,8 +401,23 @@ class DynamicVehicleDetector(Node):
                         vy = float(output_data[1]) if len(output_data) > 1 else 0.0
                         theta = float(output_data[2]) if len(output_data) > 2 else 0.0
                     
-                    # Create object with model predictions
-                    obj = DetectedObject(px, py, vx, vy, theta)
+                    # Calculate object size based on detection confidence or distance
+                    # Higher confidence or closer objects might be larger
+                    img_x = int((px + self.origin_offset) / self.pixelsize)
+                    img_y = int((py + self.origin_offset) / self.pixelsize)
+                    if 0 <= img_x < self.image_size and 0 <= img_y < self.image_size:
+                        confidence = float(output_hm[img_y, img_x])
+                        # Size based on confidence and distance
+                        distance = np.sqrt(px**2 + py**2)
+                        base_size = 0.4  # Base vehicle size
+                        confidence_factor = min(2.0, max(0.5, confidence * 2.0))  # Scale by confidence
+                        distance_factor = min(1.5, max(0.7, 1.0 + distance * 0.1))  # Slightly larger for distant objects
+                        object_size = base_size * confidence_factor * distance_factor
+                    else:
+                        object_size = 0.4  # Default size
+                    
+                    # Create object with model predictions and calculated size
+                    obj = DetectedObject(px, py, vx, vy, theta, object_size)
                     detected_objects.append(obj)
             
             # Publish objects
@@ -410,7 +425,7 @@ class DynamicVehicleDetector(Node):
             self.publish_objects_data(detected_objects)
             
             if len(detected_objects) > 0:
-                self.get_logger().info(f'Detected {len(detected_objects)} objects: x={detected_objects[0].x:.2f}, y={detected_objects[0].y:.2f}, vx={detected_objects[0].vx:.2f}, vy={detected_objects[0].vy:.2f}, yaw={detected_objects[0].yaw:.2f}')
+                self.get_logger().info(f'Detected {len(detected_objects)} objects: x={detected_objects[0].x:.2f}, y={detected_objects[0].y:.2f}, vx={detected_objects[0].vx:.2f}, vy={detected_objects[0].vy:.2f}, yaw={detected_objects[0].yaw:.2f}, size={detected_objects[0].size:.2f}')
             
         except Exception as e:
             self.get_logger().error(f"Error in process_scan: {e}")
@@ -419,11 +434,11 @@ class DynamicVehicleDetector(Node):
         """Publish object data as Float32MultiArray"""
         data_msg = Float32MultiArray()
         
-        # Format: [num_objects, x1, y1, vx1, vy1, yaw1, x2, y2, vx2, vy2, yaw2, ...]
+        # Format: [num_objects, x1, y1, vx1, vy1, yaw1, size1, x2, y2, vx2, vy2, yaw2, size2, ...]
         data = [float(len(objects))]
         
         for obj in objects:
-            data.extend([obj.x, obj.y, obj.vx, obj.vy, obj.yaw])
+            data.extend([obj.x, obj.y, obj.vx, obj.vy, obj.yaw, obj.size])
         
         data_msg.data = data
         self.objects_data_pub.publish(data_msg)
@@ -540,7 +555,7 @@ class DynamicVehicleDetector(Node):
             
             # Text content with object information
             velocity_magnitude = np.sqrt(obj.vx**2 + obj.vy**2)
-            text_marker.text = f"Object_{i+1}\nPos: ({obj.x:.2f},{obj.y:.2f})\nVel: {velocity_magnitude:.2f}m/s\nYaw: {obj.yaw:.2f}rad"
+            text_marker.text = f"Object_{i+1}\nPos: ({obj.x:.2f},{obj.y:.2f})\nVel: {velocity_magnitude:.2f}m/s\nYaw: {obj.yaw:.2f}rad\nSize: {obj.size:.2f}m"
             
             marker_array.markers.append(text_marker)
         
