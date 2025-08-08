@@ -1,0 +1,6 @@
+free_thresh: 0.196
+image: redbull_0.png
+negate: 0
+occupied_thresh: 0.65
+origin: [-3.2942771911621094, -4.7643287658691404, 0]
+resolution: 0.05000000074505806
