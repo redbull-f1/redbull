@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "string": "cpp",
+        "limits": "cpp",
+        "iomanip": "cpp",
+        "filesystem": "cpp"
+    }
+}

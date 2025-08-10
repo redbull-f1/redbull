@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(f110_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 add_executable(global_planner src/global_planner_node.cpp)
 target_include_directories(global_planner PUBLIC
@@ -21,10 +23,16 @@ ament_target_dependencies(global_planner
   rclcpp
   nav_msgs
   f110_msgs
+  ament_index_cpp
+  visualization_msgs
 )
 
 install(TARGETS global_planner
   DESTINATION lib/${PROJECT_NAME})
+
+# Install data files
+install(DIRECTORY data/
+  DESTINATION share/${PROJECT_NAME}/data)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

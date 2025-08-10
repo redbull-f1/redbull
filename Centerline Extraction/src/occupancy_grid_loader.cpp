@@ -1,5 +1,6 @@
 #include "occupancy_grid_loader.h"
 #include "config.h"
+#include "config.h"
 #include <iostream>
 
 OccupancyGrid OccupancyGridLoader::loadMap(const std::string& yaml_file_path) {
@@ -26,29 +27,30 @@ OccupancyGrid OccupancyGridLoader::loadMap(const std::string& yaml_file_path) {
 void OccupancyGridLoader::createBinaryMap(OccupancyGrid& grid) {
     grid.binary_map = cv::Mat::zeros(grid.image.size(), CV_8UC1);
     
-    // Config에서 임계값 설정 사용 여부 확인
-    double occupied_thresh = grid.metadata.occupied_thresh;
-    double free_thresh = grid.metadata.free_thresh;
+    // Config에서 픽셀값 기준 임계값 사용
+    int pixel_occupied_thresh = Config::OCCUPIED_THRESH;
+    int pixel_free_thresh = Config::FREE_THRESH;
     
-    if (Config::USE_CUSTOM_THRESHOLD) {
-        occupied_thresh = Config::CUSTOM_OCCUPIED_THRESH;
-        free_thresh = Config::CUSTOM_FREE_THRESH;
-        std::cout << "Using custom thresholds - Occupied: " << occupied_thresh 
-                  << ", Free: " << free_thresh << std::endl;
-    } else {
-        std::cout << "Using YAML thresholds - Occupied: " << occupied_thresh 
-                  << ", Free: " << free_thresh << std::endl;
-    }
+    std::cout << "픽셀값 기준 임계값 - Occupied(이하): " << pixel_occupied_thresh 
+              << ", Free(이상): " << pixel_free_thresh << std::endl;
     
     for (int y = 0; y < grid.image.rows; y++) {
         for (int x = 0; x < grid.image.cols; x++) {
             uchar pixel_value = grid.image.at<uchar>(y, x);
-            double prob = getOccupancyProbability(pixel_value, grid.metadata);
             
-            if (prob >= occupied_thresh) {
-                grid.binary_map.at<uchar>(y, x) = 255; // 점유됨 -> 벽 (흰색)
+            // negate 처리 (필요한 경우)
+            uchar processed_value = pixel_value;
+            if (grid.metadata.negate) {
+                processed_value = 255 - pixel_value;
+            }
+            
+            if (processed_value >= pixel_free_thresh) {
+                grid.binary_map.at<uchar>(y, x) = 255; // 자유공간 -> 흰색
+            } else if (processed_value <= pixel_occupied_thresh) {
+                grid.binary_map.at<uchar>(y, x) = 0;   // 점유됨(벽) -> 검은색
             } else {
-                grid.binary_map.at<uchar>(y, x) = 0;   // 자유공간 -> 트랙 (검은색)
+                // 중간값은 uncertain area - 보통 벽으로 처리
+                grid.binary_map.at<uchar>(y, x) = 0;   // 벽으로 처리 -> 검은색
             }
         }
     }
@@ -61,10 +63,49 @@ cv::Point2d OccupancyGridLoader::pixelToWorld(const cv::Point2i& pixel, const Ma
     return world;
 }
 
-double OccupancyGridLoader::getOccupancyProbability(uchar pixel_value, const MapMetadata& metadata) {
-    double normalized = pixel_value / 255.0;
-    if (metadata.negate) {
-        normalized = 1.0 - normalized;
+void OccupancyGridLoader::analyzeImageHistogram(const cv::Mat& image) {
+    // 히스토그램 계산
+    std::vector<cv::Mat> images = {image};
+    cv::Mat hist;
+    int histSize = 256;
+    std::vector<int> channels = {0};
+    std::vector<int> hist_sizes = {histSize};
+    std::vector<float> ranges = {0, 256};
+    
+    cv::calcHist(images, channels, cv::Mat(), hist, hist_sizes, ranges);
+    
+    // 기본 정보 출력
+    std::cout << "\n=== 이미지 밝기 히스토그램 분석 ===" << std::endl;
+    std::cout << "이미지 크기: " << image.cols << "x" << image.rows << std::endl;
+    
+    // 전체 픽셀 수
+    int total_pixels = image.cols * image.rows;
+    std::cout << "전체 픽셀 수: " << total_pixels << std::endl;
+    
+    // 각 밝기값별 픽셀 수와 비율 (상위 3개만)
+    std::vector<std::pair<int, int>> brightness_counts;
+    
+    for (int i = 0; i < histSize; i++) {
+        int count = static_cast<int>(hist.at<float>(i));
+        if (count > 0) {
+            brightness_counts.push_back({i, count});
+        }
     }
-    return normalized;
+    
+    // 픽셀 수로 정렬 (내림차순)
+    std::sort(brightness_counts.begin(), brightness_counts.end(), 
+              [](const std::pair<int,int>& a, const std::pair<int,int>& b) {
+                  return a.second > b.second;
+              });
+    
+    std::cout << "\n상위 3개 밝기값:" << std::endl;
+    for (int i = 0; i < std::min(3, static_cast<int>(brightness_counts.size())); i++) {
+        int brightness = brightness_counts[i].first;
+        int count = brightness_counts[i].second;
+        double percentage = (count * 100.0) / total_pixels;
+        std::cout << "밝기 " << brightness << ": " << count << "개 (" 
+                  << std::fixed << std::setprecision(2) << percentage << "%)" << std::endl;
+    }
+    
+    std::cout << "================================\n" << std::endl;
 }

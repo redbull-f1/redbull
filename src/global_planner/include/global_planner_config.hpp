@@ -8,8 +8,8 @@
 
 typedef struct {
     std::string vehicle_namespace{""};
+    std::string trajectory_csv_file{"icra_2.csv"};
     double loop_rate_hz{100.0};
-
 } GlobalPlannerConfig;
 
 #endif // __GLOBAL_PLANNER_CONFIG_HPP__

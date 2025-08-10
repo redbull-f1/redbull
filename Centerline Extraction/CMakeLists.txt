@@ -19,6 +19,7 @@ pkg_check_modules(YAMLCPP REQUIRED yaml-cpp)
 set(SOURCES
     src/occupancy_grid_loader.cpp
     src/image_processor.cpp
+    src/visualization_utils.cpp
     src/main.cpp
 )
 

@@ -5,6 +5,12 @@
 #include <yaml-cpp/yaml.h>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <iomanip>
+#include <algorithm>
+#include <cmath>
+#include "config.h"
+#include <filesystem>
 
 struct MapMetadata {
     std::string image_path;
@@ -26,9 +32,9 @@ public:
     static OccupancyGrid loadMap(const std::string& yaml_file_path);
     static void createBinaryMap(OccupancyGrid& grid);
     static cv::Point2d pixelToWorld(const cv::Point2i& pixel, const MapMetadata& metadata, int image_rows);
+    static void analyzeImageHistogram(const cv::Mat& image);
 
 private:
-    static double getOccupancyProbability(uchar pixel_value, const MapMetadata& metadata);
 };
 
 #endif // OCCUPANCY_GRID_LOADER_H

@@ -3,15 +3,17 @@
 <package format="3">
   <name>global_planner</name>
   <version>0.0.0</version>
-  <description>The global_planner package</description>
-  <maintainer email="minwon0314@hanyang.ac.kr">lmw</maintainer>
-  <license>Apache-2.0</license>
+  <description>TODO: Package description</description>
+  <maintainer email="lmw@todo.todo">lmw</maintainer>
+  <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <build_depend>f110_msgs</build_depend>
-  <exec_depend>f110_msgs</exec_depend>
-  <build_depend>nav_msgs</build_depend>
-  <exec_depend>nav_msgs</exec_depend>
+
+  <depend>rclcpp</depend>
+  <depend>nav_msgs</depend>
+  <depend>f110_msgs</depend>
+  <depend>ament_index_cpp</depend>
+  <depend>visualization_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
