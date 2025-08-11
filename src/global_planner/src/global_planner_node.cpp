@@ -34,7 +34,7 @@ GlobalPlanner::GlobalPlanner(const std::string &node_name, const rclcpp::NodeOpt
         "/global_waypoints", qos_profile);
     p_local_waypoints_ = this->create_publisher<f110_msgs::msg::WpntArray>(
         "/local_waypoints", qos_profile);
-    p_car_state_odom_ = this->create_publisher<nav_msgs::msg::Odometry>(
+    p_car_state_odom_ = this->create_publisher<nav_msgs::msg::Odometry>(  // frenet 으로 이름 바꾸기
         "/car_state/frenet/odom", qos_profile);
     
     // Timer init
