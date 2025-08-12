@@ -1,0 +1,4 @@
+
+# ROS2 bags
+bag/*.db3
+*.bag
