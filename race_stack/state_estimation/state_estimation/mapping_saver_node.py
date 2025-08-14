@@ -22,8 +22,8 @@ class MappingSaverNode(Node):
         self.map_name = self.get_parameter('map_name').get_parameter_value().string_value
         
         # Create map directory
-        stack_master_share = get_package_share_directory('stack_master')
-        self.map_dir = os.path.join(stack_master_share, 'maps', self.map_name)
+        race_stack_share = get_package_share_directory('race_stack')
+        self.map_dir = os.path.join(race_stack_share, 'maps', self.map_name)
         
         # State variables
         self.map_data = None
@@ -159,7 +159,7 @@ class MappingSaverNode(Node):
                 'origin': [self.map_origin.x, self.map_origin.y, 0],
                 'negate': 0,
                 'occupied_thresh': 0.65,
-                'free_thresh': 0.196
+                'free_thresh': 0.3
             }
             
             yaml_path = os.path.join(self.map_dir, self.map_name + '.yaml')
@@ -167,10 +167,10 @@ class MappingSaverNode(Node):
                 yaml.dump(yaml_data, file, default_flow_style=False)
             
             # Save pbstream using finish_map.sh
-            workspace_path = os.path.expanduser('~/f1tenth_ws')
             pbstream_path = os.path.join(self.map_dir, self.map_name + '.pbstream')
+            race_stack_share = get_package_share_directory('race_stack')
             finish_script_path = os.path.join(
-                workspace_path, 'src', 'race_stack', 'stack_master', 'scripts', 'finish_map.sh'
+                race_stack_share, 'state_estimation', 'state_estimation', 'finish_map.sh'
             )
             
             # Make script executable and run it
