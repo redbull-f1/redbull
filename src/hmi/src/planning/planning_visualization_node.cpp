@@ -8,7 +8,7 @@ PlanningVisualizationNode::PlanningVisualizationNode(const std::string &node_nam
     
     // Parameters
     this->declare_parameter("planning_viz/loop_rate_hz", 10.0);
-    this->declare_parameter("planning_viz/centerline_csv_file", "icra_2_centerline.csv");
+    this->declare_parameter("planning_viz/centerline_csv_file", "redbull_0_centerline.csv");
 
     ProcessParams();
     RCLCPP_INFO(this->get_logger(), "loop_rate_hz: %f", loop_rate_hz_);
@@ -79,7 +79,7 @@ void PlanningVisualizationNode::Run() {
 bool PlanningVisualizationNode::LoadCenterlineFromCSV(const std::string& csv_filename) {
     try {
         // Get the package share directory
-        std::string package_share_directory = ament_index_cpp::get_package_share_directory("HMI");
+        std::string package_share_directory = ament_index_cpp::get_package_share_directory("hmi");
         std::string csv_path = package_share_directory + "/data/" + csv_filename;
         
         RCLCPP_INFO(this->get_logger(), "Loading centerline from: %s", csv_path.c_str());

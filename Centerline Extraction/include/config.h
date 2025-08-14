@@ -5,7 +5,7 @@
 namespace Config {
     // Map settings
     const std::string MAP_PATH = "../input/";
-    const std::string MAP_NAME = "icra_2";
+    const std::string MAP_NAME = "redbull_0";
 
     // Occupancy thresholds
     const int OCCUPIED_THRESH = 220; // 점유된 것으로 간주할 픽셀값 임계값
