@@ -5,7 +5,7 @@
 이 코드는 ROS2 환경에서 LiDAR 센서와 Odometry 데이터를 받아 TinyCenterSpeed 신경망을 이용해 실시간으로 주변 차량(상대 차량)을 감지하고, 그 결과를 RViz2에서 시각화(MarkerArray)로 보여주는 노드입니다.
 
 - LiDAR 스캔(/scan)과 Odometry(/ego_racecar/odom) 토픽을 구독합니다.
-- 2프레임의 LiDAR 데이터를 전처리하여 4채널 입력으로 만듭니다.
+- 2프레임의 LiDAR 데이터를 전처리하여 6채널 입력으로 만듭니다.
 - TinyCenterSpeed 신경망(CenterSpeedDense)으로 히트맵(heatmap) 예측을 수행합니다.
 - 히트맵에서 k개의 피크(상대 차량 위치 후보)를 찾고, 이를 차량 좌표계에서 지도 좌표계(map)로 변환합니다.
 - 감지된 차량 위치를 MarkerArray로 RViz2에 시각화합니다.
@@ -35,14 +35,19 @@ class SimDetector(Node):
     def __init__(self):
         super().__init__('sim_detector')
         # Parameters
-        self.declare_parameter('model_path', 
-                               '/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/centerspeed_best_epoch_1_24_good.pt')
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/epoch_10.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/TinyCenterSpeed.pt
+        # /home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/dense_epoch_9.pt
+        # self.declare_parameter('model_path', '/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/TinyCenterSpeed.pt') 
+        # self.declare_parameter('model_path', '/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/epoch_10.pt') 
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/dense_epoch_2.pt
 
+        self.declare_parameter('model_path', '/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/redbull_0811_no_intensity_epoch_70.pt') 
 
-        self.declare_parameter('image_size', 128)
+        self.declare_parameter('image_size', 64)
         self.declare_parameter('dense', True)
-        self.declare_parameter('num_opponents', 1)
-        self.declare_parameter('detection_threshold', 0.6) #0.67이 좋음 /home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/centerspeed_best_epoch_1_24_good.pt
+        self.declare_parameter('num_opponents', 5)
+        self.declare_parameter('detection_threshold', 0.4)
         self.declare_parameter('pixelsize', 0.1)
         self.declare_parameter('origin_offset', None)
         self.declare_parameter('map_frame', 'map')
@@ -55,6 +60,8 @@ class SimDetector(Node):
         self.image_size = self.get_parameter('image_size').value
         self.dense = self.get_parameter('dense').value
         self.num_opponents = self.get_parameter('num_opponents').value
+        print(self.num_opponents)
+
         self.detection_threshold = self.get_parameter('detection_threshold').value
         self.pixelsize = self.get_parameter('pixelsize').value
         self.origin_offset = (self.image_size // 2) * self.pixelsize
@@ -81,13 +88,15 @@ class SimDetector(Node):
             self.get_logger().error('Cannot import CenterSpeedDense')
             CenterSpeedDense = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
         if torch.cuda.is_available():
             print("cuda")
         else:
             print("cpu")
 
-        # Instantiate CenterSpeedDense for 4-channel input (2 frames)
-        self.net = CenterSpeedDense(input_channels=4, image_size=self.image_size)
+        # Instantiate CenterSpeedDense for 6-channel input (2 frames)
+        self.net = CenterSpeedDense(input_channels=6, image_size=self.image_size)
+        # 모델 경로를 파라미터에서 받아서 사용
         self.net.load_state_dict(torch.load(self.model_path, map_location=self.device), strict=False)
         self.net.eval()
         self.net.to(self.device)
@@ -110,24 +119,38 @@ class SimDetector(Node):
 
     def preprocess_scan(self, scan_msg):
         lidar_data = np.array(scan_msg.ranges, dtype=np.float32)
-        # intensities 채널은 사용하지 않고, occupancy/density만 사용한다고 가정 (4채널)
+        if hasattr(scan_msg, 'intensities') and len(scan_msg.intensities) > 0:
+            intensities = np.array(scan_msg.intensities, dtype=np.float32)
+            if intensities.max() > intensities.min():
+                intensities = (intensities - intensities.min()) / (intensities.max() - intensities.min())
+            else:
+                intensities = np.full_like(lidar_data, 0.5, dtype=np.float32)
+        else:
+            intensities = np.full_like(lidar_data,1, dtype=np.float32)
+            # print("no intensities")
+
+
+
         angles = np.linspace(scan_msg.angle_min, scan_msg.angle_max, len(lidar_data))
         cos_angles = np.cos(angles)
         sin_angles = np.sin(angles)
-        preprocessed_scans = np.zeros((1, 2, self.image_size, self.image_size), dtype=np.float32)
+        preprocessed_scans = np.zeros((1, 3, self.image_size, self.image_size), dtype=np.float32)
         x = lidar_data * cos_angles
         y = lidar_data * sin_angles
         forward_filter = x >= 0
         x = x[forward_filter]
         y = y[forward_filter]
+        intensities = intensities[forward_filter]
         x_coord = ((x + self.origin_offset) / self.pixelsize).astype(int)
         y_coord = ((y + self.origin_offset) / self.pixelsize).astype(int)
         valid_indices = (x_coord >= 0) & (x_coord < self.image_size) & (y_coord >= 0) & (y_coord < self.image_size)
         x_coord = x_coord[valid_indices]
         y_coord = y_coord[valid_indices]
         if len(x_coord) > 0:
-            preprocessed_scans[:, 0, y_coord, x_coord] = 1  # occupancy
-            preprocessed_scans[:, 1, y_coord, x_coord] += 1 # density
+            preprocessed_scans[:, 0, y_coord, x_coord] = 1
+            preprocessed_scans[:, 1, y_coord, x_coord] = np.maximum(
+                preprocessed_scans[:, 1, y_coord, x_coord], intensities[valid_indices])
+            preprocessed_scans[:, 2, y_coord, x_coord] += 1
         return preprocessed_scans
 
     def index_to_cartesian(self, x_img, y_img):
@@ -165,49 +188,50 @@ class SimDetector(Node):
         return x, y
 
     def lidar_to_map(self, x_lidar, y_lidar, odom):
+        # odom.pose.pose.position: (x, y, z), orientation: quaternion
         px = odom.pose.pose.position.x
         py = odom.pose.pose.position.y
         q = odom.pose.pose.orientation
+        # quaternion to yaw
         siny_cosp = 2 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
         yaw = np.arctan2(siny_cosp, cosy_cosp)
+        # 회전 + 평행이동
         x_map = np.cos(yaw) * x_lidar - np.sin(yaw) * y_lidar + px
         y_map = np.sin(yaw) * x_lidar + np.cos(yaw) * y_lidar + py
         return x_map, y_map
-    
+
     def process(self):
         if self.scan_data is None or self.odom is None:
             return
-
+        # CenterSpeed 2프레임 입력
         if self.frame1 is None:
             self.frame1 = self.preprocess_scan(self.scan_data)
             return
         if self.frame2 is None:
             self.frame2 = self.preprocess_scan(self.scan_data)
             return
-
-        # 최신 2프레임 구성
         self.frame1 = self.frame2
         self.frame2 = self.preprocess_scan(self.scan_data)
-
-        # (1, 4, H, W)
+        if self.frame1 is None or self.frame2 is None:
+            return
         input_tensor = np.concatenate([self.frame1, self.frame2], axis=1)
-        input_tensor = torch.from_numpy(input_tensor).float().to(self.device)
-
+        input_tensor = torch.FloatTensor(input_tensor).to(self.device)
         with torch.no_grad():
-            outputs = self.net(input_tensor)      # 기대: [1, C, H, W] (C는 4라고 가정)
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]
-
-        # --- 여기부터가 핵심 수정 ---
-        # heatmap 채널 명시적으로 선택 후 sigmoid로 [0,1] 확률화
-        heatmap = outputs[0, 0]                   # 배치 0, 채널 0 = heatmap
-        heatmap = torch.sigmoid(heatmap).cpu().numpy()
-        # --- 핵심 수정 끝 ---
-
-        # 피크 탐색 (threshold는 0.4~0.6대 권장)
-        x, y = self.find_k_peaks(heatmap, self.num_opponents, self.detection_threshold)
-
+            outputs = self.net(input_tensor)
+        if isinstance(outputs, tuple):
+            output_hm = outputs[0]
+        else:
+            output_hm = outputs
+        if len(output_hm.shape) == 4:
+            output_hm = output_hm.squeeze(0)
+        if len(output_hm.shape) == 3:
+            output_hm = output_hm[0]
+        if len(output_hm.shape) != 2:
+            return
+        x, y = self.find_k_peaks(output_hm.cpu().numpy(), self.num_opponents, self.detection_threshold)
+        # Detected object가 없으면 MarkerArray를 publish하지 않음
+        # Always clear previous markers in RViz
         marker_array = MarkerArray()
         clear_marker = Marker()
         clear_marker.action = Marker.DELETEALL
@@ -233,69 +257,11 @@ class SimDetector(Node):
                 marker.color.g = 0.0
                 marker.color.b = 0.0
                 marker.color.a = 1.0
+                marker.lifetime.sec = 0
+                marker.lifetime.nanosec = 0
                 marker_array.markers.append(marker)
-
         self.marker_pub.publish(marker_array)
 
-
-
-
-    # def process(self):
-    #     if self.scan_data is None or self.odom is None:
-    #         return
-    #     if self.frame1 is None:
-    #         self.frame1 = self.preprocess_scan(self.scan_data)
-    #         return
-    #     if self.frame2 is None:
-    #         self.frame2 = self.preprocess_scan(self.scan_data)
-    #         return
-    #     self.frame1 = self.frame2
-    #     self.frame2 = self.preprocess_scan(self.scan_data)
-    #     if self.frame1 is None or self.frame2 is None:
-    #         return
-    #     input_tensor = np.concatenate([self.frame1, self.frame2], axis=1)  # (1, 4, H, W)
-    #     input_tensor = torch.FloatTensor(input_tensor).to(self.device)
-    #     with torch.no_grad():
-    #         outputs = self.net(input_tensor)
-    #     if isinstance(outputs, tuple):
-    #         output_hm = outputs[0]
-    #     else:
-    #         output_hm = outputs
-    #     if len(output_hm.shape) == 4:
-    #         output_hm = output_hm.squeeze(0)
-    #     if len(output_hm.shape) == 3:
-    #         output_hm = output_hm[0]
-    #     if len(output_hm.shape) != 2:
-    #         return
-    #     x, y = self.find_k_peaks(output_hm.cpu().numpy(), self.num_opponents, self.detection_threshold)
-    #     marker_array = MarkerArray()
-    #     clear_marker = Marker()
-    #     clear_marker.action = Marker.DELETEALL
-    #     marker_array.markers.append(clear_marker)
-    #     if len(x) > 0:
-    #         for i, (x_lidar, y_lidar) in enumerate(zip(x, y)):
-    #             x_map, y_map = self.lidar_to_map(x_lidar, y_lidar, self.odom)
-    #             marker = Marker()
-    #             marker.header.frame_id = self.map_frame
-    #             marker.header.stamp = self.get_clock().now().to_msg()
-    #             marker.ns = "sim_detector"
-    #             marker.id = i
-    #             marker.type = Marker.SPHERE
-    #             marker.action = Marker.ADD
-    #             marker.pose.position.x = x_map
-    #             marker.pose.position.y = y_map
-    #             marker.pose.position.z = 0.1
-    #             marker.scale.x = 0.4
-    #             marker.scale.y = 0.4
-    #             marker.scale.z = 0.4
-    #             marker.color.r = 1.0
-    #             marker.color.g = 0.0
-    #             marker.color.b = 0.0
-    #             marker.color.a = 1.0
-    #             marker.lifetime.sec = 0
-    #             marker.lifetime.nanosec = 0
-    #             marker_array.markers.append(marker)
-    #     self.marker_pub.publish(marker_array)
 
 def main(args=None):
     rclpy.init(args=args)
