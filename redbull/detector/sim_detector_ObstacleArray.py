@@ -37,15 +37,20 @@ class SimDetector(Node):
 
         # -------------------- Parameters --------------------
         self.declare_parameter('model_path',
-                               '/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull60000_Spiel10000_epoch_34.pt')
+                               '/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull_objfree_trainfree24494_epoch_14.pt')
         
         #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull60000_Spiel10000_epoch_34.pt
-        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/centerspeed_best_epoch_1_24_good.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/centerspeed_best_epoch_1_24.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull_best_epoch_1_25_loss1_374.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull60000_Spiel10000_1floor40000_epoch_28.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull_objfree_best_epoch_10.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull_objfree_best_epoch_11_free.pt
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/redbull_objfree_trainfree24494_epoch_14.pt
 
         self.declare_parameter('image_size', 128)
         self.declare_parameter('dense', True)
         self.declare_parameter('num_opponents', 1)
-        self.declare_parameter('detection_threshold', 0.75)   # heatmap 확률 스레시홀드
+        self.declare_parameter('detection_threshold', 0.8)   # heatmap 확률 스레시홀드
         self.declare_parameter('pixelsize', 0.1)
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('laser_frame', 'laser')
@@ -169,14 +174,15 @@ class SimDetector(Node):
         return x, y
 
     # radious는 검출된 peak 주변 몇 미터이내의 값은 제거 해서 중복되는 객체 검출을 방지하는 용도
-    def find_k_peaks(self, image, k, threshold=0.3, radius=1):   
+    def find_k_peaks(self, image, k, threshold=0.3, radius=0.1):   
         """
         image: (H, W) numpy, 0~1
         k개 피크 좌표(픽셀 인덱스) 반환.
         """
         H, W = image.shape
         mask = image.copy()
-        r_pix = max(1, int(radius / self.pixelsize))
+        # r_pix = max(1, int(radius / self.pixelsize))
+        r_pix = 60 # 주변 픽셀 픽셀을 제거 
         peaks = []
 
         for _ in range(k):

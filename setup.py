@@ -7,17 +7,12 @@ package_name = 'redbull'
 setup(
     name=package_name,
     version='1.0.0',
-    packages=find_packages(),
-    py_modules=['car_tracker'],
+    packages=find_packages(include=['redbull', 'redbull.*']),
     data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resource/' + package_name]),
+        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # Include launch files if they exist
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py') if os.path.exists('launch') else []),
-        # Include config files if they exist
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml') if os.path.exists('config') else []),
-        # Include model files if they exist
         (os.path.join('share', package_name, 'trained_models'), glob('train/trained_models/*.pt') if os.path.exists('train/trained_models') else []),
     ],
     install_requires=[
@@ -38,11 +33,12 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'car_tracker = car_tracker:main',
-            'dynamic_vehicle_detector = detector.dynamic_vehicle_detector_ros2:main',
-            'parse_bag_csv = parse_bag_csv:main',
-            'parse_bag_ros2 = parse_bag_ros2:main',
+            # 반드시 redbull. 접두사 + 모듈에 main() 있어야 함
+            'car_tracker = redbull.detector.car_tracker:main',
+            'dynamic_vehicle_detector = redbull.detector.dynamic_vehicle_detector_ros2:main',
+            'parse_bag_csv = redbull.src.parse_bag_csv:main',
+            'parse_bag_ros2 = redbull.src.parse_bag_ros2:main',
+            'sim_detector_obstacles = redbull.detector.sim_detector_ObstacleArray:main',
         ],
     },
 )
-
