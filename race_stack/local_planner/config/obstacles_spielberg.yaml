@@ -1,0 +1,103 @@
+# Static obstacles configuration for Spielberg map
+# 12 obstacles placed on the track based on RViz coordinates
+# Format: id, x, y, vx, vy, yaw, size
+
+#=====================================================================================
+#정적 장애물 위치 설정 (n=12) (size=0.5 통일)
+#=====================================================================================
+static_obstacles:
+  - id: 1
+    x: -59.07 # -58.604  -> 장애물 중심에 있게 세팅  
+    y: 32.29 # 32.678
+    vx: 0.0
+    vy: 0.0
+    yaw: 2.027   # calculated from z=0.8780669, w=0.4785379
+    size: 0.5
+    
+  - id: 2
+    x: -69.554
+    y: 45.930
+    vx: 0.0
+    vy: 0.0
+    yaw: 2.409   # calculated from z=0.9278775, w=0.3728851
+    size: 0.5
+    
+  - id: 3
+    x: -62.656
+    y: 53.179
+    vx: 0.0
+    vy: 0.0
+    yaw: -0.056  # calculated from z=-0.0280653, w=0.9996061
+    size: 0.5
+    
+  - id: 4
+    x: -41.032
+    y: 50.991
+    vx: 0.0
+    vy: 0.0
+    yaw: -0.160  # calculated from z=-0.0797229, w=0.9968171
+    size: 0.5
+    
+  - id: 5
+    x: -36.227
+    y: 48.697
+    vx: 0.0
+    vy: 0.0
+    yaw: -0.192  # calculated from z=-0.0958909, w=0.9953918
+    size: 0.5
+    
+  - id: 6
+    x: -17.226
+    y: 38.089
+    vx: 0.0
+    vy: 0.0
+    yaw: -2.272  # calculated from z=-0.9598982, w=0.2803489
+    size: 0.5
+    
+  - id: 7
+    x: -20.068
+    y: 36.360
+    vx: 0.0
+    vy: 0.0
+    yaw: -2.776  # calculated from z=-0.983289, w=0.1820515
+    size: 0.5
+    
+  - id: 8
+    x: -44.176
+    y: 38.523
+    vx: 0.0
+    vy: 0.0
+    yaw: -2.718  # calculated from z=-0.977412, w=0.2113430
+    size: 0.5
+    
+  - id: 9
+    x: -13.586
+    y: 24.251
+    vx: 0.0
+    vy: 0.0
+    yaw: 0.008   # calculated from z=0.0038994, w=0.9999924
+    size: 0.5
+    
+  - id: 10
+    x: -10.560
+    y: 25.737
+    vx: 0.0
+    vy: 0.0
+    yaw: 0.032   # calculated from z=0.0159828, w=0.9998723
+    size: 0.5
+    
+  - id: 11
+    x: 17.861
+    y: 24.057
+    vx: 0.0
+    vy: 0.0
+    yaw: -0.779  # calculated from z=-0.3811656, w=0.9245068
+    size: 0.5
+    
+  - id: 12
+    x: 7.107
+    y: 2.428
+    vx: 0.0
+    vy: 0.0
+    yaw: -2.913  # calculated from z=-0.993363, w=0.1150215
+    size: 0.5

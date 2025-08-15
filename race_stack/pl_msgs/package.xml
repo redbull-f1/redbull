@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>pl_msg</name>
+  <version>0.0.1</version>
+  <description>Messages for perception + local planner</description>
+  <maintainer email="you@example.com">Dahoon Jeong</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- rosidl + 사용 중인 메시지 의존성 명시 -->
+  <build_depend>rosidl_default_generators</build_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <!-- (메시지에 쓰면 추가) <depend>builtin_interfaces</depend> -->
+
+  <member_of_group>rosidl_interface_packages</member_of_group>
+</package>

@@ -1,0 +1,27 @@
+# colcon
+build/
+install/
+log/
+
+# editors
+.vscode/
+.idea/
+
+# python
+__pycache__/
+*.pyc
+
+# misc
+*.bag
+*.zip
+*.log
+submodules/teleop-tools/
+build/
+install/
+log/
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+*.log
+*.bag
