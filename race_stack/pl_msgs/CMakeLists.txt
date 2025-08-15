@@ -4,12 +4,13 @@ project(pl_msg)
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-# ★ 메시지에서 쓰는 의존들을 반드시 find_package 해줘야 함
+# 메시지에서 사용하는 의존 패키지
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-# 메시지에 직접 쓰면 활성화
+# 필요하면 활성화
 # find_package(builtin_interfaces REQUIRED)
 
+# *.msg → 인터페이스 코드 생성
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/FrenetDebug.msg"
   "msg/FrenetDebugArray.msg"
@@ -19,9 +20,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/OTWpntArray.msg"
   "msg/Wpnt.msg"
   "msg/WpntArray.msg"
-  DEPENDENCIES std_msgs geometry_msgs   # (+ builtin_interfaces 사용 시 추가)
+  DEPENDENCIES std_msgs geometry_msgs
+  # builtin_interfaces 사용 시 위 라인에 추가
 )
 
+# 원본 msg도 설치(선택)
 install(DIRECTORY msg DESTINATION share/${PROJECT_NAME})
 
 ament_export_dependencies(rosidl_default_runtime)
