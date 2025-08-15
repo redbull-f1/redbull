@@ -355,11 +355,44 @@ GlobalPlanner::FrenetCoordinates GlobalPlanner::CartesianToFrenet(double x, doub
     
     // Detailed debugging output
     RCLCPP_INFO_THROTTLE(this->get_logger(), *get_clock(), 1000,
-        "Frenet Debug: Vehicle(%.2f,%.2f) -> WP[%d](%.2f,%.2f) -> "
-        "dx=%.2f, dy=%.2f, track_psi=%.3f -> ds=%.3f, dd=%.3f -> s=%.2f, d=%.3f", 
-        x, y, closest_idx, wp_x, wp_y, dx, dy, track_psi, ds, dd, frenet.s, frenet.d);
+        "[Frenet] XY(%.2f,%.2f)  ClosestWP[%d]:XY(%.2f,%.2f)  TrackPsi:%.3f  dX:%.2f dY:%.2f  ds:%.2f dd:%.2f  =>  s:%.2f d:%.2f",
+        x, y, closest_idx, wp_x, wp_y, track_psi, dx, dy, ds, dd, frenet.s, frenet.d);
     
     return frenet;
+}
+
+std::pair<double, double> GlobalPlanner::CartesianVelocityToFrenet(double vx, double vy, double vehicle_theta) {
+    // base_link 기준 속도를 map 기준 속도로 변환
+    // vx, vy: base_link 기준 (x: 전방, y: 좌측)
+    // vehicle_theta: map 기준 차량 헤딩 (x축 기준 CCW)
+    if (global_trajectory_.empty()) {
+        RCLCPP_WARN(this->get_logger(), "Global trajectory is empty, cannot convert velocity to Frenet");
+        return {0.0, 0.0};
+    }
+
+    int closest_idx = last_closest_index_;
+    if (closest_idx < 0 || closest_idx >= (int)global_trajectory_.size()) {
+        RCLCPP_WARN(this->get_logger(), "Invalid closest waypoint index for velocity conversion");
+        return {0.0, 0.0};
+    }
+
+    // 트랙 방향(psi, map 기준)
+    double track_psi = global_trajectory_[closest_idx][5];
+
+    // 1. base_link -> map 변환
+    double vx_map = vx * cos(vehicle_theta) - vy * sin(vehicle_theta);
+    double vy_map = vx * sin(vehicle_theta) + vy * cos(vehicle_theta);
+
+    // 2. map -> frenet 변환
+    // vd: 트랙 좌측이 +인 횡방향, vs: 트랙 종방향(Reference Line 방향)
+    double vd = vx_map * cos(track_psi) + vy_map * sin(track_psi);
+    double vs = -vx_map * sin(track_psi) + vy_map * cos(track_psi);
+
+    RCLCPP_DEBUG(this->get_logger(),
+        "Velocity conversion: BaseLink(vx=%.3f, vy=%.3f, theta=%.3f) -> Map(vx=%.3f, vy=%.3f) -> Track_psi=%.3f -> Frenet(vs=%.3f, vd=%.3f)",
+        vx, vy, vehicle_theta, vx_map, vy_map, track_psi, vs, vd);
+
+    return {vs, vd};
 }
 
 void GlobalPlanner::PublishFrenetOdometry(const builtin_interfaces::msg::Time& timestamp,
@@ -474,41 +507,6 @@ void GlobalPlanner::PublishLocalWaypoints(const FrenetCoordinates& current_frene
     RCLCPP_DEBUG(this->get_logger(), 
         "Published %d local waypoints starting from index %d (s=%.2f)", 
         num_local_waypoints, start_idx, current_frenet.s);
-}
-
-std::pair<double, double> GlobalPlanner::CartesianVelocityToFrenet(double vx, double vy, double vehicle_theta) {
-    // Suppress unused parameter warning
-    (void)vehicle_theta;
-    
-    if (global_trajectory_.empty()) {
-        RCLCPP_WARN(this->get_logger(), "Global trajectory is empty, cannot convert velocity to Frenet");
-        return {0.0, 0.0};
-    }
-    
-    // Use the last found closest index for track direction
-    int closest_idx = last_closest_index_;
-    
-    if (closest_idx < 0 || closest_idx >= (int)global_trajectory_.size()) {
-        RCLCPP_WARN(this->get_logger(), "Invalid closest waypoint index for velocity conversion");
-        return {0.0, 0.0};
-    }
-    
-    // Get track heading at closest waypoint
-    double track_psi = global_trajectory_[closest_idx][5];  // psi_rad from CSV
-    
-    // Convert Cartesian velocity to Frenet velocity
-    // vs = longitudinal velocity (along track)
-    // vd = lateral velocity (perpendicular to track)
-    // More advanced velocity conversion using vehicle heading
-    double relative_heading = vehicle_theta - track_psi;
-    double vs = vx * cos(relative_heading) + vy * sin(relative_heading);
-    double vd = -vx * sin(relative_heading) + vy * cos(relative_heading);
-    
-    RCLCPP_DEBUG(this->get_logger(), 
-        "Velocity conversion: Cart(vx=%.3f, vy=%.3f) -> Track_psi=%.3f -> Frenet(vs=%.3f, vd=%.3f)",
-        vx, vy, track_psi, vs, vd);
-    
-    return {vs, vd};
 }
 
 int main(int argc, char **argv) {
