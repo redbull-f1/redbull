@@ -104,6 +104,7 @@ class MAP_Controller:
         else:
             raise Exception("L1_point is None")
 
+
         return speed, acceleration, jerk, steering_angle, L1_point, L1_distance, self.idx_nearest_waypoint
 
     def calc_steering_angle(self, L1_point, L1_distance, yaw, lat_e_norm, v):
@@ -146,12 +147,15 @@ class MAP_Controller:
         steering_angle = self.steer_lookup.lookup_steer_angle(lat_acc, speed_for_lu)
 
         # modifying steer based on acceleration
-        steering_angle = self.acc_scaling(steering_angle)
+        # comment 1
+        # steering_angle = self.acc_scaling(steering_angle)
         # modifying steer based on speed
-        steering_angle = self.speed_steer_scaling(steering_angle, speed_for_lu)
+        # comment 2
+        # steering_angle = self.speed_steer_scaling(steering_angle, speed_for_lu)
 
         # modifying steer based on velocity
-        steering_angle *= np.clip(1 + (self.speed_now / 10), 1, 1.25)
+        # comment 3
+        # steering_angle *= np.clip(1 + (self.speed_now / 10), 1, 1.25)
 
         # limit change of steering angle
         threshold = 0.4

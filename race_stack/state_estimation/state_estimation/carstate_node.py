@@ -9,7 +9,7 @@ from sensor_msgs.msg import Imu
 from f110_msgs.msg import WpntArray
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, TransformStamped
-from frenet_conversion.frenet_converter import FrenetConverter
+# from frenet_conversion.frenet_converter import FrenetConverter
 from tf_transformations import euler_from_quaternion
 
 # Carstate node is relevant for SE1 only (basic state estimaiton pipeline).
@@ -56,9 +56,9 @@ class Carstate(Node):
         self.wait_for_messages(frenet_bool=self.frenet_bool)
 
         # Publish at 80 Hz
-        self.create_timer(1/80, self.cartesian_state_loop)
+        self.create_timer(1/40, self.cartesian_state_loop)
         if self.frenet_bool:
-            self.create_timer(1/80, self.frenet_state_loop)
+            self.create_timer(1/40, self.frenet_state_loop)
 
     def ekf_odom_cb(self, data):
         self.ekf_odom = data
@@ -85,7 +85,7 @@ class Carstate(Node):
                 waypoints_x = [waypoint.x_m for waypoint in waypoint_array]
                 waypoints_y = [waypoint.y_m for waypoint in waypoint_array]
                 waypoints_psi = [waypoint.psi_rad for waypoint in waypoint_array]
-                self.frenet_converter = FrenetConverter(np.array(waypoints_x), np.array(waypoints_y), np.array(waypoints_psi))
+                # self.frenet_converter = FrenetConverter(np.array(waypoints_x), np.array(waypoints_y), np.array(waypoints_psi))
                 self.get_logger().info('Received Global Waypoints message and frenet converter initialized!')
                 frenet_print = True
         self.get_logger().info('All required messages received. Continuing...')
@@ -122,45 +122,45 @@ class Carstate(Node):
         self.state_pose_pub.publish(carstate_pose_msg)
 
 
-    def frenet_state_loop(self):
-        if self.car_state_odom is None:
-            return
+    # def frenet_state_loop(self):
+    #     if self.car_state_odom is None:
+    #         return
 
-        odom_cart = self.car_state_odom
-        x_cart = odom_cart.pose.pose.position.x
-        y_cart = odom_cart.pose.pose.position.y
-        vx = odom_cart.twist.twist.linear.x
-        vy = odom_cart.twist.twist.linear.y
-        q_cart = odom_cart.pose.pose.orientation
-        theta = euler_from_quaternion([q_cart.x, q_cart.y, q_cart.z, q_cart.w])[2]
+    #     odom_cart = self.car_state_odom
+    #     x_cart = odom_cart.pose.pose.position.x
+    #     y_cart = odom_cart.pose.pose.position.y
+    #     vx = odom_cart.twist.twist.linear.x
+    #     vy = odom_cart.twist.twist.linear.y
+    #     q_cart = odom_cart.pose.pose.orientation
+    #     theta = euler_from_quaternion([q_cart.x, q_cart.y, q_cart.z, q_cart.w])[2]
 
-        # get frenet coordinates and velocities
-        frenet_pos = self.frenet_converter.get_frenet([x_cart], [y_cart])
-        frenet_vel = self.frenet_converter.get_frenet_velocities(vx, vy, theta)
+    #     # get frenet coordinates and velocities
+    #     frenet_pos = self.frenet_converter.get_frenet([x_cart], [y_cart])
+    #     frenet_vel = self.frenet_converter.get_frenet_velocities(vx, vy, theta)
 
-        s = frenet_pos[0, 0]
-        d = frenet_pos[1, 0]
-        vs = frenet_vel[0][0]
-        vd = frenet_vel[1][0]
+    #     s = frenet_pos[0, 0]
+    #     d = frenet_pos[1, 0]
+    #     vs = frenet_vel[0][0]
+    #     vd = frenet_vel[1][0]
 
-        #frenet pose msg
-        frenet_pose_msg = PoseStamped()
-        frenet_pose_msg.header.stamp = odom_cart.header.stamp
-        frenet_pose_msg.header.frame_id = "frenet"
-        frenet_pose_msg.pose.position.x = s
-        frenet_pose_msg.pose.position.y = d
+    #     #frenet pose msg
+    #     frenet_pose_msg = PoseStamped()
+    #     frenet_pose_msg.header.stamp = odom_cart.header.stamp
+    #     frenet_pose_msg.header.frame_id = "frenet"
+    #     frenet_pose_msg.pose.position.x = s
+    #     frenet_pose_msg.pose.position.y = d
 
-        #frenet odom msg
-        frenet_odom_msg = Odometry()
-        frenet_odom_msg.header = frenet_pose_msg.header
-        frenet_odom_msg.pose.pose = frenet_pose_msg.pose
-        frenet_odom_msg.twist.twist.linear.x = vs
-        frenet_odom_msg.twist.twist.linear.y = vd
-        #TODO handle speed from EKF
+    #     #frenet odom msg
+    #     frenet_odom_msg = Odometry()
+    #     frenet_odom_msg.header = frenet_pose_msg.header
+    #     frenet_odom_msg.pose.pose = frenet_pose_msg.pose
+    #     frenet_odom_msg.twist.twist.linear.x = vs
+    #     frenet_odom_msg.twist.twist.linear.y = vd
+    #     #TODO handle speed from EKF
 
-        #publish
-        self.frenet_state_odom_pub.publish(frenet_odom_msg)
-        self.frenet_state_pose_pub.publish(frenet_pose_msg)
+    #     #publish
+    #     self.frenet_state_odom_pub.publish(frenet_odom_msg)
+    #     self.frenet_state_pose_pub.publish(frenet_pose_msg)
 
 def main():
     rclpy.init()

@@ -8,7 +8,7 @@ PlanningVisualizationNode::PlanningVisualizationNode(const std::string &node_nam
     
     // Parameters
     this->declare_parameter("planning_viz/loop_rate_hz", 10.0);
-    this->declare_parameter("planning_viz/centerline_csv_file", "redbull_0_centerline.csv");
+    this->declare_parameter("planning_viz/centerline_csv_file", "redbull_1_centerline.csv");
 
     ProcessParams();
     RCLCPP_INFO(this->get_logger(), "loop_rate_hz: %f", loop_rate_hz_);

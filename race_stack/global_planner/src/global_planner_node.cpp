@@ -10,7 +10,7 @@ GlobalPlanner::GlobalPlanner(const std::string &node_name, const rclcpp::NodeOpt
     
     // Parameters
     this->declare_parameter("global_planner/loop_rate_hz", 100.0);
-    this->declare_parameter("global_planner/trajectory_csv_file", "redbull_0.csv");
+    this->declare_parameter("global_planner/trajectory_csv_file", "redbull_1.csv");
 
     ProcessParams();
     RCLCPP_INFO(this->get_logger(), "loop_rate_hz: %f", cfg_.loop_rate_hz);

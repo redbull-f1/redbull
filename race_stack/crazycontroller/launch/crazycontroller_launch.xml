@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="mode" default="MAP" description="Mode of operation: MAP only (simplified for time trial racing)" />
-    <arg name="l1_params_path" default="$(find-pkg-share race_stack)/config/control/RBC1/l1_params.yaml" />
-    <arg name="lookup_table_path" default="$(find-pkg-share race_stack)/config/control/RBC1/RBC1_pacejka_lookup_table.csv" />
+    <arg name="l1_params_path" default="$(env RACE_STACK_PATH)/config/control/RBC1/l1_params.yaml" />
+    <arg name="lookup_table_path" default="$(env RACE_STACK_PATH)/config/control/RBC1/RBC1_pacejka_lookup_table.csv" />
     <node pkg="crazycontroller" name="crazycontroller_manager" exec="crazycontroller">
         <param name="mode" value="$(var mode)" />
         <param name="l1_params_path" value="$(var l1_params_path)" />

@@ -22,7 +22,7 @@ class MappingSaverNode(Node):
         self.map_name = self.get_parameter('map_name').get_parameter_value().string_value
         
         # Create map directory
-        race_stack_share = get_package_share_directory('race_stack')
+        race_stack_share = os.environ['RACE_STACK_PATH']
         self.map_dir = os.path.join(race_stack_share, 'maps', self.map_name)
         
         # State variables
@@ -168,7 +168,7 @@ class MappingSaverNode(Node):
             
             # Save pbstream using finish_map.sh
             pbstream_path = os.path.join(self.map_dir, self.map_name + '.pbstream')
-            race_stack_share = get_package_share_directory('race_stack')
+            race_stack_share = os.environ['RACE_STACK_PATH']
             finish_script_path = os.path.join(
                 race_stack_share, 'state_estimation', 'state_estimation', 'finish_map.sh'
             )

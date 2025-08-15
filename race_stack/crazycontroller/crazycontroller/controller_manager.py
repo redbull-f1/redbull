@@ -13,7 +13,8 @@ from f110_msgs.msg import WpntArray
 from geometry_msgs.msg import Point, PoseStamped
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
-from visualization_msgs.msg import Marker, MarkerArray
+# 주석 1
+# from visualization_msgs.msg import Marker, MarkerArray
 # from frenet_conversion.frenet_converter import FrenetConverter
 
 from crazycontroller.map import MAP_Controller
@@ -50,10 +51,11 @@ class CrazyController(Node):
         self.publish_topic = '/drive'  # simulation + real 다된대요 안되면 rethink
         # self.publish_topic = '/vesc/high_level/ackermann_cmd_mux/input/nav_1'
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.publish_topic, 10)
-        self.steering_pub = self.create_publisher(Marker, 'steering', 10)
-        self.lookahead_pub = self.create_publisher(Marker, 'lookahead_point', 10)
-        self.waypoint_pub = self.create_publisher(MarkerArray, 'my_waypoints', 10)
-        self.l1_pub = self.create_publisher(Point, 'l1_distance', 10)
+        # 주석 2
+        # self.steering_pub = self.create_publisher(Marker, 'steering', 10)
+        #self.lookahead_pub = self.create_publisher(Marker, 'lookahead_point', 10)
+        # self.waypoint_pub = self.create_publisher(MarkerArray, 'my_waypoints', 10)
+        # self.l1_pub = self.create_publisher(Point, 'l1_distance', 10)
 
         # State variables
         self.track_length = None
@@ -64,8 +66,9 @@ class CrazyController(Node):
         self.waypoint_safety_counter = 0
 
         # buffers for improved computation
-        self.waypoint_array_buf = MarkerArray()
-        self.markers_buf = [Marker() for _ in range(1000)]
+        # comment 3
+        # self.waypoint_array_buf = MarkerArray()
+        # self.markers_buf = [Marker() for _ in range(1000)]
 
         # controller choice
         if self.mode == "MAP":
@@ -83,7 +86,7 @@ class CrazyController(Node):
         # Subscribers
         self.create_subscription(WpntArray, '/global_waypoints', self.track_length_cb, 10)
         self.create_subscription(WpntArray, '/local_waypoints', self.local_waypoint_cb, 10)
-        self.create_subscription(Odometry, '/car_state/odom', self.odom_cb, 10)
+        # self.create_subscription(Odometry, '/car_state/odom', self.odom_cb, 10)
         self.create_subscription(Odometry, '/car_state/odom', self.car_state_cb, 10)
         self.create_subscription(Odometry, '/car_state/frenet/odom', self.car_state_frenet_cb, 10)
 
@@ -260,10 +263,11 @@ class CrazyController(Node):
         self.track_length = data.wpnts[-1].s_m
         self.waypoints = np.array([[wpnt.x_m, wpnt.y_m, wpnt.psi_rad] for wpnt in data.wpnts])
 
-    def odom_cb(self, data: Odometry):
-        self.speed_now = data.twist.twist.linear.x
+    # def odom_cb(self, data: Odometry):
+        # self.speed_now = data.twist.twist.linear.x
 
     def car_state_cb(self, data: Odometry):
+        self.speed_now = data.twist.twist.linear.x
         x = data.pose.pose.position.x
         y = data.pose.pose.position.y
         rot = Rotation.from_quat([data.pose.pose.orientation.x, data.pose.pose.orientation.y,
@@ -325,9 +329,10 @@ class CrazyController(Node):
             self.track_length)
 
         # Visualization
-        self.set_lookahead_marker(L1_point, 100)
-        self.visualize_steering(steering_angle)
-        self.l1_pub.publish(Point(x=float(idx_nearest_waypoint), y=L1_distance))
+        # comment 4
+        # self.set_lookahead_marker(L1_point, 100)
+        # self.visualize_steering(steering_angle)
+        # self.l1_pub.publish(Point(x=float(idx_nearest_waypoint), y=L1_distance))
 
         # Safety check for waypoint timeout
         self.waypoint_safety_counter += 1
@@ -344,6 +349,7 @@ class CrazyController(Node):
     def control_loop(self):
         if self.mode == "MAP":
             speed, steer = self.map_cycle()
+            self.get_logger().info(f"[DEBUG] steering_angle to publish: {steer}")
         else:
             self.get_logger().error(f"Unsupported mode: {self.mode}")
             speed = 0
@@ -358,78 +364,78 @@ class CrazyController(Node):
         self.drive_pub.publish(ack_msg)
 
     ############################################ VISUALIZATION ############################################
-    def visualize_steering(self, theta):
-        quaternions = euler.euler2quat(0, 0, theta)
+    # def visualize_steering(self, theta):
+    #     quaternions = euler.euler2quat(0, 0, theta)
 
-        lookahead_marker = Marker()
-        lookahead_marker.header.frame_id = "car_state/base_link"
-        lookahead_marker.header.stamp = self.get_clock().now().to_msg()
-        lookahead_marker.type = 0
-        lookahead_marker.id = 50
-        lookahead_marker.scale.x = 0.6
-        lookahead_marker.scale.y = 0.05
-        lookahead_marker.scale.z = 0.01
-        lookahead_marker.color.r = 1.0
-        lookahead_marker.color.g = 0.0
-        lookahead_marker.color.b = 0.0
-        lookahead_marker.color.a = 1.0
-        lookahead_marker.pose.position.x = 0.0
-        lookahead_marker.pose.position.y = 0.0
-        lookahead_marker.pose.position.z = 0.0
-        lookahead_marker.pose.orientation.x = quaternions[0]
-        lookahead_marker.pose.orientation.y = quaternions[1]
-        lookahead_marker.pose.orientation.z = quaternions[2]
-        lookahead_marker.pose.orientation.w = quaternions[3]
-        self.steering_pub.publish(lookahead_marker)
+    #     lookahead_marker = Marker()
+    #     lookahead_marker.header.frame_id = "car_state/base_link"
+    #     lookahead_marker.header.stamp = self.get_clock().now().to_msg()
+    #     lookahead_marker.type = 0
+    #     lookahead_marker.id = 50
+    #     lookahead_marker.scale.x = 0.6
+    #     lookahead_marker.scale.y = 0.05
+    #     lookahead_marker.scale.z = 0.01
+    #     lookahead_marker.color.r = 1.0
+    #     lookahead_marker.color.g = 0.0
+    #     lookahead_marker.color.b = 0.0
+    #     lookahead_marker.color.a = 1.0
+    #     lookahead_marker.pose.position.x = 0.0
+    #     lookahead_marker.pose.position.y = 0.0
+    #     lookahead_marker.pose.position.z = 0.0
+    #     lookahead_marker.pose.orientation.x = quaternions[0]
+    #     lookahead_marker.pose.orientation.y = quaternions[1]
+    #     lookahead_marker.pose.orientation.z = quaternions[2]
+    #     lookahead_marker.pose.orientation.w = quaternions[3]
+    #     self.steering_pub.publish(lookahead_marker)
 
-    def set_waypoint_markers(self, waypoints):
-        wpnt_id = 0
+    # def set_waypoint_markers(self, waypoints):
+    #     wpnt_id = 0
 
-        for waypoint in waypoints:
-            waypoint_marker = self.markers_buf[wpnt_id]
-            waypoint_marker.header.frame_id = "map"
-            waypoint_marker.header.stamp = self.get_clock().now().to_msg()
-            waypoint_marker.type = 2
-            waypoint_marker.scale.x = 0.1
-            waypoint_marker.scale.y = 0.1
-            waypoint_marker.scale.z = 0.1
-            waypoint_marker.color.r = 0.0
-            waypoint_marker.color.g = 0.0
-            waypoint_marker.color.b = 1.0
-            waypoint_marker.color.a = 1.0
-            waypoint_marker.pose.position.x = waypoint[0]
-            waypoint_marker.pose.position.y = waypoint[1]
-            waypoint_marker.pose.position.z = 0.0
-            waypoint_marker.pose.orientation.x = 0.0
-            waypoint_marker.pose.orientation.y = 0.0
-            waypoint_marker.pose.orientation.z = 0.0
-            waypoint_marker.pose.orientation.w = 1.0
-            waypoint_marker.id = wpnt_id + 1
-            wpnt_id += 1
-        self.waypoint_array_buf.markers = self.markers_buf[:wpnt_id]
-        self.waypoint_pub.publish(self.waypoint_array_buf)
+    #     for waypoint in waypoints:
+    #         waypoint_marker = self.markers_buf[wpnt_id]
+    #         waypoint_marker.header.frame_id = "map"
+    #         waypoint_marker.header.stamp = self.get_clock().now().to_msg()
+    #         waypoint_marker.type = 2
+    #         waypoint_marker.scale.x = 0.1
+    #         waypoint_marker.scale.y = 0.1
+    #         waypoint_marker.scale.z = 0.1
+    #         waypoint_marker.color.r = 0.0
+    #         waypoint_marker.color.g = 0.0
+    #         waypoint_marker.color.b = 1.0
+    #         waypoint_marker.color.a = 1.0
+    #         waypoint_marker.pose.position.x = waypoint[0]
+    #         waypoint_marker.pose.position.y = waypoint[1]
+    #         waypoint_marker.pose.position.z = 0.0
+    #         waypoint_marker.pose.orientation.x = 0.0
+    #         waypoint_marker.pose.orientation.y = 0.0
+    #         waypoint_marker.pose.orientation.z = 0.0
+    #         waypoint_marker.pose.orientation.w = 1.0
+    #         waypoint_marker.id = wpnt_id + 1
+    #         wpnt_id += 1
+    #     self.waypoint_array_buf.markers = self.markers_buf[:wpnt_id]
+    #     self.waypoint_pub.publish(self.waypoint_array_buf)
 
-    def set_lookahead_marker(self, lookahead_point, id):
-        lookahead_marker = Marker()
-        lookahead_marker.header.frame_id = "map"
-        lookahead_marker.header.stamp = self.get_clock().now().to_msg()
-        lookahead_marker.type = 2
-        lookahead_marker.id = id
-        lookahead_marker.scale.x = 0.15
-        lookahead_marker.scale.y = 0.15
-        lookahead_marker.scale.z = 0.15
-        lookahead_marker.color.r = 1.0
-        lookahead_marker.color.g = 0.0
-        lookahead_marker.color.b = 0.0
-        lookahead_marker.color.a = 1.0
-        lookahead_marker.pose.position.x = lookahead_point[0]
-        lookahead_marker.pose.position.y = lookahead_point[1]
-        lookahead_marker.pose.position.z = 0.0
-        lookahead_marker.pose.orientation.x = 0.0
-        lookahead_marker.pose.orientation.y = 0.0
-        lookahead_marker.pose.orientation.z = 0.0
-        lookahead_marker.pose.orientation.w = 1.0
-        self.lookahead_pub.publish(lookahead_marker)
+    # def set_lookahead_marker(self, lookahead_point, id):
+    #     lookahead_marker = Marker()
+    #     lookahead_marker.header.frame_id = "map"
+    #     lookahead_marker.header.stamp = self.get_clock().now().to_msg()
+    #     lookahead_marker.type = 2
+    #     lookahead_marker.id = id
+    #     lookahead_marker.scale.x = 0.15
+    #     lookahead_marker.scale.y = 0.15
+    #     lookahead_marker.scale.z = 0.15
+    #     lookahead_marker.color.r = 1.0
+    #     lookahead_marker.color.g = 0.0
+    #     lookahead_marker.color.b = 0.0
+    #     lookahead_marker.color.a = 1.0
+    #     lookahead_marker.pose.position.x = lookahead_point[0]
+    #     lookahead_marker.pose.position.y = lookahead_point[1]
+    #     lookahead_marker.pose.position.z = 0.0
+    #     lookahead_marker.pose.orientation.x = 0.0
+    #     lookahead_marker.pose.orientation.y = 0.0
+    #     lookahead_marker.pose.orientation.z = 0.0
+    #     lookahead_marker.pose.orientation.w = 1.0
+    #     self.lookahead_pub.publish(lookahead_marker)
 
 
 def main():
