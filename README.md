@@ -126,6 +126,12 @@ ros2 run redbull dynamic_vehicle_detector --ros-args \
 - Scikit-learn >= 1.0.0
 - WandB >= 0.12.0 (선택사항, 훈련용)
 
+지금 종명 노트북 상황
+numpy 1.26.4
+torch 2.7.1+cu126
+Name: rclpy
+Version: 3.3.17
+
 ### ROS2 의존성 (자동 설치)
 - rclpy, sensor_msgs, geometry_msgs, visualization_msgs, std_msgs
 - tf2_ros, rosbag2_py, nav_msgs, builtin_interfaces
