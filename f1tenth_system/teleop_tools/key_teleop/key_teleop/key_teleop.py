@@ -44,7 +44,7 @@ class PygameTeleop(Node):
         # Parameters (launch 파일이나 CLI 로 override 가능)
         self._hz             = self.declare_parameter('hz',                30.0).value # 30.0으로 변경 (주기)
         self._max_forward    = self.declare_parameter('forward_rate',      0.9).value  # 0.8에서 5.0으로 변경 (전진 최대 속도)
-        self._max_backward   = self.declare_parameter('backward_rate',     1.0).value # 0.5에서 2.0으로 변경 (후진 최대 속도)
+        self._max_backward   = self.declare_parameter('backward_rate',     0.9).value # 0.5에서 2.0으로 변경 (후진 최대 속도)
         self._max_steer      = self.declare_parameter('rotation_rate',     0.36).value  # 1.0에서 1.5로 변경 (회전 최대 속도)
         self._lin_accel      = self.declare_parameter('linear_acceleration',  1.0).value # 1.0에서 0.5로 변경 (선형 가속도)
         self._ang_accel      = self.declare_parameter('angular_acceleration', 1.0).value # 원래 2.0

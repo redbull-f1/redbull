@@ -9,7 +9,7 @@ GlobalPlanner::GlobalPlanner(const std::string &node_name, const rclcpp::NodeOpt
     auto qos_profile = rclcpp::QoS(rclcpp::KeepLast(10));
     
     // Parameters
-    this->declare_parameter("global_planner/loop_rate_hz", 100.0);
+    this->declare_parameter("global_planner/loop_rate_hz", 40.0);
     this->declare_parameter("global_planner/trajectory_csv_file", "redbull_1.csv");
 
     ProcessParams();

@@ -4,12 +4,12 @@ ackermann_mux:
       navigation:
         topic   : drive
         timeout : 0.2
-        priority: 10
+        priority: 100
       joystick:
         topic   : teleop
         timeout : 0.2
-        priority: 100
+        priority: 10
       keyboard:
         topic   : key_vel
         timeout : 0.2
-        priority: 80
+        priority: 50
