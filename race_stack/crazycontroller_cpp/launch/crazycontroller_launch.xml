@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- 기존 기본값/설명 유지 -->
+    <arg name="mode" default="MAP" description="Mode of operation: MAP only (simplified for time trial racing)" />
+    <arg name="l1_params_path" default="$(env RACE_STACK_PATH)/config/control/RBC1/l1_params.yaml" />
+    <arg name="lookup_table_path" default="$(env RACE_STACK_PATH)/config/control/RBC1/RBC1_pacejka_lookup_table.csv" />
+
+    <!-- 패키지명만 C++ 포트로 변경, 실행 파일은 controller_manager_node -->
+    <node pkg="crazycontroller_cpp" name="crazycontroller_manager" exec="controller_manager_node" output="screen">
+        <param name="mode" value="$(var mode)" />
+        <param name="l1_params_path" value="$(var l1_params_path)" />
+        <param name="lookup_table_path" value="$(var lookup_table_path)" />
+        <!--
+        <param name="map_path" value="/home/lmw/sim_ws/f1tenth_gym_ros/maps/icra_2_clean"/>
+        <param name="racecar_version" value="RBC1"/>
+        <param name="sim" value="true"/>
+        -->
+    </node>
+</launch>

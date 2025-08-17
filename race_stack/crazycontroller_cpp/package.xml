@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>crazycontroller_cpp</name>
+  <version>0.0.0</version>
+  <description>Simplified controller for time trial racing (C++ port of crazycontroller)</description>
+
+  <!-- 원 패키지 메타데이터를 반영 -->
+  <maintainer email="nicolas.baumann@pbl.ee.ethz.ch">ForzaETH</maintainer>
+  <license>MIT</license>
+
+  <!-- build tool -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- run/compile deps (C++ 포트에서 실제 사용하는 것들) -->
+  <depend>rclcpp</depend>
+  <depend>rcl_interfaces</depend>
+  <depend>ackermann_msgs</depend>
+  <depend>f110_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>yaml-cpp</depend>
+  <depend>tf2_ros</depend>
+
+
+  <!-- Eigen3 CMake 모듈/패키지 (환경에 따라 eigen 또는 eigen3_cmake_module가 필요할 수 있음) -->
+  <depend>eigen</depend>
+
+  <!-- 런치 사용 시 -->
+  <exec_depend>ros2launch</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
