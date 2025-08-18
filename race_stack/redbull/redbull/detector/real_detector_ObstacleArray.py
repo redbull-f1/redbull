@@ -23,7 +23,10 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import Marker, MarkerArray
 # 메시지 패키지 경로는 사용자 환경에 맞춰 유지
-from redbull_msgs.msg import ObstacleArray, ObstacleWpnt
+# from redbull_msgs.msg import ObstacleArray, ObstacleWpnt
+from pl_msg.msg import ObstacleArray, ObstacleWpnt
+
+
 # from redbull.msg import ObstacleArray, ObstacleWpnt
 # from redbull.redbull_msgs.msg import ObstacleArray, ObstacleWpnt
 
@@ -227,13 +230,31 @@ class SimDetector(Node):
         inp = np.concatenate([self.frame1, self.frame2], axis=1)  # (1, 4, H, W)
         inp_t = torch.from_numpy(inp).float().to(self.device)
 
+        # # ---------- 추론 ----------
+        # t0 = time.time()
+        # with torch.no_grad():
+        #     out = self.net(inp_t)  # 기대: [1, 4, H, W] (0: heatmap logit, 1: vx, 2: vy, 3: yaw)
+        #     if isinstance(out, tuple):
+        #         out = out[0]
+        # inf_ms = (time.time() - t0) * 1000.0
         # ---------- 추론 ----------
-        t0 = time.time()
+        if self.device.type == 'cuda':
+            torch.cuda.synchronize()
+        t0 = time.perf_counter()
         with torch.no_grad():
-            out = self.net(inp_t)  # 기대: [1, 4, H, W] (0: heatmap logit, 1: vx, 2: vy, 3: yaw)
+            out = self.net(inp_t)
             if isinstance(out, tuple):
                 out = out[0]
-        inf_ms = (time.time() - t0) * 1000.0
+        if self.device.type == 'cuda':
+            torch.cuda.synchronize()
+        inf_ms = (time.perf_counter() - t0) * 1000.0
+
+        ## GPU 메모리 정보
+        if self.device.type == 'cuda':
+            mem_mb     = torch.cuda.memory_allocated() / 1e6
+            max_mem_mb = torch.cuda.max_memory_allocated() / 1e6
+            self.get_logger().info(f"GPU mem {mem_mb:.1f}MB (max {max_mem_mb:.1f}MB)")
+
 
         # heatmap 확률화
         heat_prob = torch.sigmoid(out[0, 0]).cpu().numpy()  # (H, W)
