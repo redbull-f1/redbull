@@ -55,7 +55,7 @@ class SimDetector(Node):
         self.declare_parameter('image_size', 128)
         self.declare_parameter('dense', True)
         self.declare_parameter('num_opponents', 1)
-        self.declare_parameter('detection_threshold', 0.85)   # heatmap 확률 스레시홀드
+        self.declare_parameter('detection_threshold', 0.9)   # heatmap 확률 스레시홀드
         self.declare_parameter('pixelsize', 0.1)
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('laser_frame', 'laser')
