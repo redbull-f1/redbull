@@ -32,8 +32,8 @@ GlobalPlanner::GlobalPlanner(const std::string &node_name, const rclcpp::NodeOpt
     // Publisher init
     p_global_waypoints_ = this->create_publisher<f110_msgs::msg::WpntArray>(
         "/global_waypoints", qos_profile);
-    p_local_waypoints_ = this->create_publisher<f110_msgs::msg::WpntArray>(
-        "/local_waypoints", qos_profile);
+    // p_local_waypoints_ = this->create_publisher<f110_msgs::msg::WpntArray>(
+    //     "/local_waypoints", qos_profile);
     p_car_state_odom_ = this->create_publisher<nav_msgs::msg::Odometry>(  // frenet 으로 이름 바꾸기
         "/car_state/frenet/odom", qos_profile);
     
@@ -106,17 +106,15 @@ void GlobalPlanner::Run() {
     // PublishFrenetOdometry(ego_racecar_odom.header.stamp, frenet_coords, vs, vd);
 
     // Publish local waypoints (next 80 waypoints from current position)
-    PublishLocalWaypoints(frenet_coords);
+    // PublishLocalWaypoints(frenet_coords);
 
-    // Publish global waypoints
+    // // Publish global waypoints
     PublishGlobalWaypoints();
 }
 
 bool GlobalPlanner::LoadGlobalTrajectoryFromCSV(const std::string& csv_filename) {
     try {
-        // Get the package share directory
-        std::string package_share_directory = ament_index_cpp::get_package_share_directory("global_planner");
-        std::string csv_path = package_share_directory + "/data/" + csv_filename;
+        std::string csv_path = csv_filename;
         
         RCLCPP_INFO(this->get_logger(), "Loading trajectory from: %s", csv_path.c_str());
         

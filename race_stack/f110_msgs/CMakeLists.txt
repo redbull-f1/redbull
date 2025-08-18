@@ -13,6 +13,8 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Wpnt.msg"
   "msg/WpntArray.msg"
+  "msg/ObstacleWpnt.msg"
+  "msg/ObstacleArray.msg"
   DEPENDENCIES std_msgs
 )
 

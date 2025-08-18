@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="global_planner" exec="global_planner" name="global_planner_node" output="screen">
+        <param name="global_planner/loop_rate_hz" value="40.0"/>
+        <param name="global_planner/trajectory_csv_file" value="/home/ailab0/total_ws/src/race_stack/maps/trajectory/redbull_1.csv"/>
+    </node>
+</launch>

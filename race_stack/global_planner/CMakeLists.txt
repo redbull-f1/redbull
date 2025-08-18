@@ -30,9 +30,13 @@ ament_target_dependencies(global_planner
 install(TARGETS global_planner
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 # Install data files
-install(DIRECTORY data/
-  DESTINATION share/${PROJECT_NAME}/data)
+# install(DIRECTORY data/
+#   DESTINATION share/${PROJECT_NAME}/data)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
