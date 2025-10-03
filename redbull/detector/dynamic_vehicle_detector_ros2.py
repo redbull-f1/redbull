@@ -32,22 +32,21 @@ model_paths = [
     redbull_root  # Root directory
 ]
 
-for path in model_paths:
-    if os.path.exists(path) and path not in sys.path:
-        sys.path.insert(0, path)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+redbull_root = os.path.dirname(current_dir)
+for p in [os.path.join(redbull_root, 'train'),
+            os.path.join(redbull_root, 'train', 'models'),
+            redbull_root,
+            os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/models'))]:
+    if os.path.exists(p) and p not in sys.path:
+        sys.path.insert(0, p)
 
 try:
-    from models.CenterSpeed import CenterSpeedDense, CenterSpeedModular
+    from CenterSpeed import CenterSpeedDense
 except ImportError as e:
-    print(f"Warning: Could not import CenterSpeed models: {e}")
-    # Try alternative import from train directory
-    try:
-        sys.path.append(os.path.join(redbull_root, 'train'))
-        from models.CenterSpeed import CenterSpeedDense, CenterSpeedModular
-    except ImportError as e2:
-        print(f"Warning: Alternative import also failed: {e2}")
-        CenterSpeedDense = None
-        CenterSpeedModular = None
+    self.get_logger().error(f"CenterSpeed import 실패: {e}")
+    raise
+
 
 import rclpy
 from rclpy.node import Node
@@ -75,8 +74,11 @@ class DynamicVehicleDetector(Node):
         super().__init__('dynamic_vehicle_detector')
         
         # Parameters
-        self.declare_parameter('model_path', 'src/trained_models/TinyCenterSpeed.pt')
-        self.declare_parameter('image_size', 64)
+        # self.declare_parameter('model_path', '/home/harry/ros2_ws/src/TinyCenterSpeed/src/trained_models/TinyCenterSpeed.pt')
+        self.declare_parameter('model_path', '/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/0_best_objfree_trainfree41561_20250817_004834_epoch_11_loss_1_63189.pt')
+
+        # /home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/0_best_objfree_trainfree41561_20250817_004834_epoch_11_loss_1_63189.pt
+        self.declare_parameter('image_size', 128)
         self.declare_parameter('dense', True)
         self.declare_parameter('num_opponents', 5)
         self.declare_parameter('detection_threshold', 0.3)
@@ -146,7 +148,7 @@ class DynamicVehicleDetector(Node):
         """Load the TinyCenterSpeed model"""
         try:
             # Check if models are available
-            if CenterSpeedDense is None or CenterSpeedModular is None:
+            if CenterSpeedDense is None :
                 self.get_logger().error("CenterSpeed models not available")
                 self.net = None
                 return
@@ -178,8 +180,7 @@ class DynamicVehicleDetector(Node):
                 
             if self.dense:
                 self.net = CenterSpeedDense(image_size=self.image_size)
-            else:
-                self.net = CenterSpeedModular(image_size=self.image_size)
+   
                 
             self.net.load_state_dict(torch.load(model_full_path, map_location=self.device, weights_only=True))
             self.net.eval()

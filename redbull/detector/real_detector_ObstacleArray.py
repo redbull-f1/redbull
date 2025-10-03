@@ -53,13 +53,12 @@ class SimDetector(Node):
         #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/1_redbull_best_epoch_1_25_loss1_374.pt
         #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/1_redbull_objfree_trainfree24494_epoch_33_loss_1_73533.pt
         #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/1_objfree_trainfree24494_20250816_210500_epoch_79.pt   MSE에 어그맨테이션 1.63056
-        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/objfree_trainfree41561_20250817_004834_epoch_11.pt
-
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/0_objfree_trainfree52497_20250817_141346_epoch_9_loss_079843.pt
 
         self.declare_parameter('image_size', 128)
         self.declare_parameter('dense', True)
         self.declare_parameter('num_opponents', 1)
-        self.declare_parameter('detection_threshold', 0.9)   # heatmap 확률 스레시홀드
+        self.declare_parameter('detection_threshold', 0.92)   # heatmap 확률 스레시홀드
         self.declare_parameter('pixelsize', 0.1)
         self.declare_parameter('map_frame', 'map')
         self.declare_parameter('laser_frame', 'laser')
@@ -95,7 +94,6 @@ class SimDetector(Node):
             redbull_root
         ]
         
-
         for p in model_paths:
             if os.path.exists(p) and p not in sys.path:
                 sys.path.insert(0, p)
@@ -122,9 +120,9 @@ class SimDetector(Node):
         self.net.eval().to(self.device)
 
         # -------------------- ROS I/O --------------------
-        self.odom = None
+        # self.odom = None                              # (LiDAR 좌표계 버전에서는 사용 안 함)
         self.scan_data = None
-        self.create_subscription(Odometry,   self.odom_topic, self.odom_callback, 10)
+        # self.create_subscription(Odometry,   self.odom_topic, self.odom_callback, 10)  # <-- LiDAR 좌표계 표시 버전에서는 미사용
         self.create_subscription(LaserScan,  self.scan_topic, self.scan_callback, 10)
         if self.publish_markers:
             self.marker_pub = self.create_publisher(MarkerArray, self.marker_topic, 10)
@@ -134,7 +132,7 @@ class SimDetector(Node):
         self.frame1 = None  # (1, 2, H, W) : [occupancy, density]
         self.frame2 = None
 
-        # 간단 추적(좌표 라운딩 → ID)
+        # 간단 추적(좌표 라운딩 → ID) — LiDAR 좌표계 기준으로 유지
         self.next_id = 1
         self.tracked_objects = {}  # { (round(x,res), round(y,res)) : id }
 
@@ -142,8 +140,8 @@ class SimDetector(Node):
         self.timer = self.create_timer(1.0 / 40.0, self.process)
 
     # -------------------- Callbacks --------------------
-    def odom_callback(self, msg: Odometry):
-        self.odom = msg
+    # def odom_callback(self, msg: Odometry):
+    #     self.odom = msg   # (LiDAR 좌표계 표시 버전에서는 사용하지 않음)
 
     def scan_callback(self, msg: LaserScan):
         self.scan_data = msg
@@ -178,6 +176,7 @@ class SimDetector(Node):
         return img
 
     def index_to_cartesian(self, x_img, y_img):
+        # LiDAR 좌표계(x: 전방+, y: 좌측+) 기준
         x = x_img * self.pixelsize - self.origin_offset
         y = y_img * self.pixelsize - self.origin_offset
         return x, y
@@ -210,6 +209,7 @@ class SimDetector(Node):
 
         return peaks  # [(x, y, score), ...]
 
+    # --- (보존용) LiDAR→map 변환: LiDAR 좌표계 버전에선 사용하지 않음 ---
     def lidar_to_map(self, x_lidar, y_lidar, odom: Odometry):
         px = odom.pose.pose.position.x
         py = odom.pose.pose.position.y
@@ -225,7 +225,8 @@ class SimDetector(Node):
 
     # -------------------- Main loop --------------------
     def process(self):
-        if self.scan_data is None or self.odom is None:
+        # if self.scan_data is None or self.odom is None:   # (기존: odom 필요)
+        if self.scan_data is None:
             return
 
         # 2프레임 버퍼 채우기
@@ -277,68 +278,66 @@ class SimDetector(Node):
             clear.action = Marker.DELETEALL
             marker_array.markers.append(clear)
 
-        # ObstacleArray 메시지
+        # ObstacleArray 메시지 — LiDAR 좌표계로 퍼블리시
         obst_msg = ObstacleArray()
         obst_msg.header = Header()
         obst_msg.header.stamp = self.get_clock().now().to_msg()
-        obst_msg.header.frame_id = self.map_frame
+        obst_msg.header.frame_id = self.laser_frame   # *** laser 프레임 ***
         obst_msg.obstacles = []
 
-        # 피크마다 map 좌표 및 (vx,vy,yaw) 샘플링
+        # 피크마다 LiDAR 좌표 및 (vx,vy,yaw) 샘플링
         for i, (x_pix, y_pix, score) in enumerate(peaks):
             # 픽셀 → LiDAR 좌표(전방 평면)
             x_lidar, y_lidar = self.index_to_cartesian(x_pix, y_pix)
-            # LiDAR → map
-            x_map, y_map, ego_yaw = self.lidar_to_map(x_lidar, y_lidar, self.odom)
 
             # vx, vy, yaw 픽셀 샘플(필요 시 bilinear 등으로 개선 가능)
             vx = float(vx_map[y_pix, x_pix])
             vy = float(vy_map[y_pix, x_pix])
             yaw = float(yaw_map[y_pix, x_pix])
 
-            # ---------- 간단 추적으로 ID 부여 ----------
-            key = (round(x_map / self.id_resolution_m) * self.id_resolution_m,
-                   round(y_map / self.id_resolution_m) * self.id_resolution_m)
+            # ---------- 간단 추적으로 ID 부여 (LiDAR 좌표계 기준) ----------
+            key = (round(x_lidar / self.id_resolution_m) * self.id_resolution_m,
+                   round(y_lidar / self.id_resolution_m) * self.id_resolution_m)
             if key not in self.tracked_objects:
                 self.tracked_objects[key] = self.next_id
                 self.next_id += 1
             obj_id = self.tracked_objects[key]
 
-            # ObstacleWpnt 작성
+            # ObstacleWpnt 작성 (LiDAR 좌표 그대로)
             ob = ObstacleWpnt()
             ob.id  = obj_id
-            ob.x   = float(x_map)
-            ob.y   = float(y_map)
+            ob.x   = float(x_lidar)
+            ob.y   = float(y_lidar)
             ob.vx  = vx
             ob.vy  = vy
             ob.yaw = yaw
             ob.size = 0.5
             obst_msg.obstacles.append(ob)
 
-            # RViz Marker
+            # RViz Marker — Fixed Frame: laser
             if self.publish_markers:
                 marker = Marker()
-                marker.header.frame_id = self.map_frame
+                marker.header.frame_id = self.laser_frame
                 marker.header.stamp    = obst_msg.header.stamp
                 marker.ns   = "sim_detector"
                 marker.id   = obj_id   # ID와 동기화
                 marker.type = Marker.SPHERE
                 marker.action = Marker.ADD
-                marker.pose.position.x = x_map
-                marker.pose.position.y = y_map
+                marker.pose.position.x = x_lidar
+                marker.pose.position.y = y_lidar
                 marker.pose.position.z = 0.1
                 marker.scale.x = 0.4
                 marker.scale.y = 0.4
                 marker.scale.z = 0.4
-                marker.color.r = 1.0
-                marker.color.g = 0.0
-                marker.color.b = 0.0
+                marker.color.r = 0.0
+                marker.color.g = 0.6
+                marker.color.b = 1.0
                 marker.color.a = 1.0
                 marker_array.markers.append(marker)
 
         # 퍼블리시
         self.obstacle_pub.publish(obst_msg)
-        # self.get_logger().info(f"Inference {inf_ms:.1f}ms, Published {len(obst_msg.obstacles)} obstacles.")
+        # self.get_logger().info(f"[LiDAR frame] Inference {inf_ms:.1f}ms, Published {len(obst_msg.obstacles)} obstacles.")
 
         if self.publish_markers and marker_array is not None:
             self.marker_pub.publish(marker_array)

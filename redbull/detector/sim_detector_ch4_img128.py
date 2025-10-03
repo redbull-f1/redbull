@@ -36,7 +36,9 @@ class SimDetector(Node):
         super().__init__('sim_detector')
         # Parameters
         self.declare_parameter('model_path', 
-                               '/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/centerspeed_best_epoch_1_24_good.pt')
+                               '/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/objfree_trainfree41561_20250817_004834_epoch_11.pt')
+        
+        #/home/harry/ros2_ws/src/TinyCenterSpeed/src/pt/objfree_trainfree41561_20250817_004834_epoch_11.pt
 
 
         self.declare_parameter('image_size', 128)
