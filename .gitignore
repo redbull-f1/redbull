@@ -2,3 +2,9 @@
 # ROS2 bags
 bag/*.db3
 *.bag
+TinyCenterSpeed_for_train/trained_models/
+TinyCenterSpeed_for_train/train/wandb/
+TinyCenterSpeed_for_train/dataset/data/TinyCenterSpeed_dataset/
+TinyCenterSpeed_for_train/**/*.pt
+TinyCenterSpeed_for_train/**/*.pth
+TinyCenterSpeed_for_train/**/.ipynb_checkpoints/
